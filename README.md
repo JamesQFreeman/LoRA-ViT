@@ -23,3 +23,5 @@ num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
 print(f"trainable parameters: {num_params}") # trainable parameters: 147456
 
 ```
+## Credit
+ViT code comes form ```lukemelas/PyTorch-Pretrained-ViT```
