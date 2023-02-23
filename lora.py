@@ -36,7 +36,7 @@ class LoRA_ViT(nn.Module):
 
         assert r > 0
 
-        # create for storage, then we can init them 
+        # create for storage, then we can init them or load weights
         self.w_As = []
         self.w_Bs = []
 
