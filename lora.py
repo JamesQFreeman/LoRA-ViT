@@ -3,9 +3,9 @@
 import math
 
 import torch
-from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 from base_vit import ViT
 
@@ -62,6 +62,7 @@ class LoRA_ViT(nn.Module):
 
         self.reset_parameters()
         self.lora_vit = vit_model
+        self.lora_vit.fc = nn.Linear(768,5)
 
     def reset_parameters(self) -> None:
         for w_A in self.w_As:
