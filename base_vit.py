@@ -1,3 +1,6 @@
+# this is a direct copy from https://github.com/lukemelas/PyTorch-Pretrained-ViT.git
+
+
 import numpy as np
 from torch import nn
 from torch import Tensor
@@ -5,6 +8,7 @@ from torch.nn import functional as F
 import torch
 from torch.utils import model_zoo
 from typing import Optional
+
 
 def get_base_config():
     """Base ViT config ViT"""
@@ -225,7 +229,7 @@ def resize_positional_embedding_(posemb, posemb_new, has_class_token=True):
 
     # Deal with class token and return
     posemb = torch.cat([posemb_tok, posemb_grid], dim=1)
-    return
+    return posemb
 
 
 def split_last(x, shape):
@@ -476,7 +480,6 @@ class ViT(nn.Module):
         b, c, fh, fw = x.shape
         x = self.patch_embedding(x)  # b,d,gh,gw
         x = x.flatten(2).transpose(1, 2)  # b,gh*gw,d
-        print(x.shape)
         if hasattr(self, 'class_token'):
             x = torch.cat((self.class_token.expand(
                 b, -1, -1), x), dim=1)  # b,gh*gw+1,d
@@ -487,8 +490,7 @@ class ViT(nn.Module):
             x = self.pre_logits(x)
             x = torch.tanh(x)
         if hasattr(self, 'fc'):
-            
+
             x = self.norm(x)[:, 0]  # b,d
             x = self.fc(x)  # b,num_classes
         return x
-
