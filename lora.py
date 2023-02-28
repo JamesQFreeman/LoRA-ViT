@@ -56,6 +56,8 @@ class LoRA_ViT(nn.Module):
         dim = base_vit_dim
         if lora_layer:
             self.lora_layer = lora_layer
+        else:
+            self.lora_layer = list(range(len(vit_model.transformer.blocks)))
         # create for storage, then we can init them or load weights
         self.w_As = []  # These are linear layers
         self.w_Bs = []
