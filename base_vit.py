@@ -490,7 +490,6 @@ class ViT(nn.Module):
             x = self.pre_logits(x)
             x = torch.tanh(x)
         if hasattr(self, 'fc'):
-
             x = self.norm(x)[:, 0]  # b,d
             x = self.fc(x)  # b,num_classes
         return x

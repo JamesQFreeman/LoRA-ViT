@@ -77,7 +77,8 @@ class LoRA_ViT(nn.Module):
         if num_classes > 0:
             self.lora_vit.fc = nn.Linear(
                 vit_model.fc.out_features, num_classes)
-
+            
+    
     def save_lora_parameters(self,
                              filename: str) -> None:
         r"""Only safetensors is supported now.
@@ -109,11 +110,13 @@ class LoRA_ViT(nn.Module):
         with safe_open(filename, framework="pt") as f:
             for i, w_A_linear in enumerate(self.w_As):
                 saved_key = f"w_a_{i:03d}"
-                w_A_linear.weight = Parameter(f.get_tensor(saved_key))
+                saved_tensor = f.get_tensor(saved_key)
+                w_A_linear.weight = Parameter(saved_tensor)
 
             for i, w_B_linear in enumerate(self.w_Bs):
                 saved_key = f"w_b_{i:03d}"
-                w_B_linear.weight = Parameter(f.get_tensor(saved_key))
+                saved_tensor = f.get_tensor(saved_key)
+                w_B_linear.weight = Parameter(saved_tensor)
 
     def reset_parameters(self) -> None:
         for w_A in self.w_As:
