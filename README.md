@@ -2,7 +2,7 @@
 Low rank adaptation for Vision Transformer
 
 ## Installation
-Gii clone. My ```torch.__version__==1.13.0```, other version newer than ```torch.__version__==1.10.0`` should also work, I guess.
+Gii clone. My ```torch.__version__==1.13.0```, other version newer than ```torch.__version__==1.10.0``` should also work, I guess.
 You may also need a ```safetensors``` from huggingface to load and save weight.
 
 ## Usage

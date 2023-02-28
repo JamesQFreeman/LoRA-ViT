@@ -28,24 +28,34 @@ class _LoRALayer(nn.Module):
 
 
 class LoRA_ViT(nn.Module):
-    """Some Information about LoRA_ViT
-        Examples::
-            >>> model = ViT('B_16_imagenet1k')
-            >>> lora_model = LoRA_ViT(model, dim=768, r=4)
-            >>> preds = lora_model(img)
-            >>> print(preds.shape)
-            torch.Size([1, 1000])
+    """Applies low-rank adaptation to a vision transformer.
+
+    Args:
+        vit_model: a vision transformer model, see base_vit.py
+        r: rank of LoRA
+        num_classes: how many classes the model output, default to the vit model
+        lora_layer: which layer we apply LoRA.
+
+    Examples::
+        >>> model = ViT('B_16_imagenet1k')
+        >>> lora_model = LoRA_ViT(model, r=4)
+        >>> preds = lora_model(img)
+        >>> print(preds.shape)
+        torch.Size([1, 1000])
     """
 
     def __init__(self,
                  vit_model: ViT,
-                 dim: int,
                  r: int,
-                 num_classes: int = 0):
+                 num_classes: int = 0,
+                 lora_layer=None):
         super(LoRA_ViT, self).__init__()
 
         assert r > 0
-
+        base_vit_dim = vit_model.transformer.blocks[0].attn.proj_q.in_features
+        dim = base_vit_dim
+        if lora_layer:
+            self.lora_layer = lora_layer
         # create for storage, then we can init them or load weights
         self.w_As = []  # These are linear layers
         self.w_Bs = []
@@ -54,11 +64,13 @@ class LoRA_ViT(nn.Module):
         for param in vit_model.parameters():
             param.requires_grad = False
 
-        # get wq and wv in our vit
-        for blk in vit_model.transformer.blocks:
+        # Here, we do the surgery 
+        for t_layer_i, blk in enumerate(vit_model.transformer.blocks):
+            # If we only want few lora layer instead of all
+            if t_layer_i not in self.lora_layer:
+                continue
             w_q_linear = blk.attn.proj_q
             w_v_linear = blk.attn.proj_v
-            assert dim == w_q_linear.in_features
             w_a_linear_q = nn.Linear(dim, r, bias=False)
             w_b_linear_q = nn.Linear(r, dim, bias=False)
             w_a_linear_v = nn.Linear(dim, r, bias=False)
@@ -76,7 +88,7 @@ class LoRA_ViT(nn.Module):
         self.lora_vit = vit_model
         if num_classes > 0:
             self.lora_vit.fc = nn.Linear(
-                vit_model.fc.out_features, num_classes)
+                vit_model.fc.in_features, num_classes)
             
     
     def save_lora_parameters(self,
