@@ -20,7 +20,7 @@ num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print(f"trainable parameters: {num_params}") #trainable parameters: 86859496
 
 
-lora_model = LoRA_ViT(model, dim=768, r=4)
+lora_model = LoRA_ViT(model, r=4)
 num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
 print(f"trainable parameters: {num_params}") # trainable parameters: 147456
 
