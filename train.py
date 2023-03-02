@@ -93,7 +93,7 @@ if __name__ == "__main__":
     loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, 100, 1e-6)
-    result = Result()
+    result = Result(cfg.num_classes)
 
     for epoch in range(1, 101):
         train(epoch)
