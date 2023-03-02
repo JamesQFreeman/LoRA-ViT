@@ -58,20 +58,36 @@ if __name__ == "__main__":
     parser.add_argument("-fold", type=int, default=0)
     parser.add_argument("-lr", type=float, default=3e-4)
     parser.add_argument("-num_workers", type=int, default=4)
+    parser.add_argument("-num_classes", "-nc", type=int, default=5)
+    parser.add_argument("-train_type", "-tt", type=str, default="lora", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
+    parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
     ckpt_path = init()
     device = 'cuda'
 
     model = ViT('B_16_imagenet1k')
     model.load_state_dict(torch.load('B_16_imagenet1k.pth'))
-    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"trainable parameters: {num_params/2**20:.1f}M") #trainable parameters: 86859496
-
-    lora_model = LoRA_ViT(model, dim=768, r=4)
-    num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-    print(f"trainable parameters: {num_params/2**20:.1f}M") # trainable parameters: 147456
-
-    net = lora_model.to(device)
+    
+    if cfg.train_type == "lora":
+        lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
+        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        net = lora_model.to(device)
+    elif cfg.train_type == "full":
+        num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        net = model.to(device)
+    elif cfg.train_type == "linear":
+        model.fc = nn.Linear(768, cfg.num_classes)
+        for param in model.parameters():
+            param.requires_grad = False
+        for param in model.fc.parameters():
+            param.requires_grad = True
+        net = model.to(device)
+    else:
+        print("Wrong training type")
+        exit()
+    
     trainset, testset = kneeDataloader(cfg)
 
     loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
