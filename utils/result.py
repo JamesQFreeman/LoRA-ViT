@@ -75,7 +75,7 @@ class ResultCLS:
         logging.debug(f"\n{self.cm}")
         self.epoch = epoch
 
-        if self.sen > self.best_result:
+        if self.acc > self.best_result:
             self.best_epoch = epoch
-            self.best_result = self.sen
+            self.best_result = self.acc
         return
