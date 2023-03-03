@@ -24,10 +24,11 @@ def get_one_hot(label, num_cls):
 
 
 class ResultCLS:
-    def __init__(self) -> None:
+    def __init__(self, num_cls) -> None:
         self.epoch = 1
         self.best_epoch = 0
         self.best_result = 0.0
+        self.num_cls = num_cls
         return
 
     def eval(self, label, pred):
@@ -42,7 +43,8 @@ class ResultCLS:
         return
 
     @torch.no_grad()
-    def stastic(self, num_cls=5):
+    def stastic(self):
+        num_cls = self.num_cls
 
         pred = torch.cat(self.pred, dim=0)
         true = torch.cat(self.true, dim=0)
