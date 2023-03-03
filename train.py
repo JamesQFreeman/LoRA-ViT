@@ -74,6 +74,7 @@ if __name__ == "__main__":
         print(f"trainable parameters: {num_params/2**20:.1f}M")
         net = lora_model.to(device)
     elif cfg.train_type == "full":
+        model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"trainable parameters: {num_params/2**20:.1f}M")
         net = model.to(device)
