@@ -30,5 +30,9 @@ Save and load LoRA:
 lora_model.save_lora_parameters('mytask.lora.safetensors') # save
 lora_model.load_lora_parameters('mytask.lora.safetensors') # load
 ```
+
+## Performance
+In M1 Pro, LoRA is about 1.8x~1.9x faster.
+```python performance_profile.py``` should do the time profiler now. More test will come soon.
 ## Credit
 ViT code and imagenet pretrained weight come from ```lukemelas/PyTorch-Pretrained-ViT```
