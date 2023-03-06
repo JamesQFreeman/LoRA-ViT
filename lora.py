@@ -66,7 +66,7 @@ class LoRA_ViT(nn.Module):
         for param in vit_model.parameters():
             param.requires_grad = False
 
-        # Here, we do the surgery 
+        # Here, we do the surgery
         for t_layer_i, blk in enumerate(vit_model.transformer.blocks):
             # If we only want few lora layer instead of all
             if t_layer_i not in self.lora_layer:
@@ -91,8 +91,41 @@ class LoRA_ViT(nn.Module):
         if num_classes > 0:
             self.lora_vit.fc = nn.Linear(
                 vit_model.fc.in_features, num_classes)
-            
-    
+
+    def save_fc_parameters(self,
+                           filename: str) -> None:
+        r"""Only safetensors is supported now.
+
+          pip install safetensor if you do not have one installed yet.
+        """
+        assert filename.endswith('.safetensors')
+        _in = self.lora_vit.fc.in_features
+        _out = self.lora_vit.fc.out_features
+        fc_tensors = {
+            f"fc_{_in}in_{_out}out": self.lora_vit.fc.weight
+        }
+        save_file(fc_tensors, filename)
+
+
+    def load_fc_parameters(self,
+                           filename: str) -> None:
+        r"""Only safetensors is supported now.
+
+          pip install safetensor if you do not have one installed yet.
+        """
+
+        assert filename.endswith('.safetensors')
+        _in = self.lora_vit.fc.in_features
+        _out = self.lora_vit.fc.out_features
+        with safe_open(filename, framework="pt") as f:
+            saved_key = f"fc_{_in}in_{_out}out"
+            try:
+                saved_tensor = f.get_tensor(saved_key)
+                self.lora_vit.fc.weight = Parameter(saved_tensor)
+            except ValueError:
+                print("this fc weight is not for this model")
+
+
     def save_lora_parameters(self,
                              filename: str) -> None:
         r"""Only safetensors is supported now.
