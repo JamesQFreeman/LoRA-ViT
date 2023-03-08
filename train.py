@@ -1,7 +1,8 @@
 import argparse
 from cgi import test
 import logging
-
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -62,6 +63,7 @@ if __name__ == "__main__":
     parser.add_argument("-data_info",type=str,default='nih_split.json')
     parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
     parser.add_argument("-lr", type=float, default=3e-4)
+    parser.add_argument("-epochs", type=int, default=100)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
     parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
@@ -69,6 +71,11 @@ if __name__ == "__main__":
     cfg = parser.parse_args()
     ckpt_path = init()
     device = 'cuda'
+
+    #   a.根据local_rank来设定当前使用哪块GPU
+    # torch.cuda.set_device(local_rank)
+    #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
+    # dist.init_process_group(backend='nccl')
 
     model = ViT('B_16_imagenet1k')
     model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
@@ -93,16 +100,16 @@ if __name__ == "__main__":
     else:
         print("Wrong training type")
         exit()
-    
+    net = torch.nn.DataParallel(net) 
     # trainset, testset = kneeDataloader(cfg)
     trainset,valset, testset=nihDataloader(cfg)
     loss_func = nn.BCEWithLogitsLoss().to(device)
     # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
-    scheduler = CosineAnnealingLR(optimizer, 100, 1e-6)
+    scheduler = CosineAnnealingLR(optimizer, cfg.epochs, 1e-6)
     result = Result(cfg.num_classes)
 
-    for epoch in range(1, 101):
+    for epoch in range(1, cfg.epochs+1):
         train(epoch)
         if epoch%5==0:
             eval(epoch)

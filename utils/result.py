@@ -8,7 +8,7 @@ import torch
 # import yaml
 from imblearn.metrics import sensitivity_score, specificity_score
 from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
-                             precision_score, roc_auc_score,recall_score)
+                             precision_score, roc_auc_score,recall_score,multilabel_confusion_matrix)
 
 
 def mkdirs(path: str):
@@ -103,7 +103,7 @@ class ResultCLS:
         self.rec = recall_score(true, pred, average="macro")
         self.f1 = f1_score(true, pred, average="macro")
         self.auc = roc_auc_score(true, probe, average="macro")
-        # self.cm = confusion_matrix(true, pred)
+        self.cm = multilabel_confusion_matrix(true, pred)
         self.time = np.round(time.time() - self.st, 1)
 
         self.pars = [self.acc, self.pre, self.rec, self.f1, self.auc]
