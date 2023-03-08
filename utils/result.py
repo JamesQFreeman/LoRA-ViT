@@ -7,7 +7,7 @@ import numpy as np
 import torch
 # import yaml
 from imblearn.metrics import sensitivity_score, specificity_score
-from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
+from sklearn.metrics import (accuracy_score, f1_score,confusion_matrix,
                              precision_score, roc_auc_score,recall_score,multilabel_confusion_matrix)
 
 
@@ -28,6 +28,7 @@ class ResultCLS:
         self.epoch = 1
         self.best_epoch = 0
         self.best_result = 0.0
+        self.test_result = 0.0
         self.num_cls = num_cls
         return
 
@@ -91,14 +92,14 @@ class ResultCLS:
         pred = torch.cat(self.pred, dim=0)
         true = torch.cat(self.true, dim=0)
 
-        probe=torch.sigmoid(pred).cpu().detach().numpy()
-        pred= (probe>0.5)
+        probe=torch.sigmoid(pred)
+        pred= (probe>0.5).float()
+        pred=pred.cpu().detach().numpy()
+        probe=probe.cpu().detach().numpy()
         true = true.cpu().detach().numpy()
 
 
         self.acc = accuracy_score(true, pred)
-        # self.sen = sensitivity_score(true, pred, average="macro")
-        # self.spe = specificity_score(true, pred, average="macro")
         self.pre = precision_score(true, pred, average="macro")
         self.rec = recall_score(true, pred, average="macro")
         self.f1 = f1_score(true, pred, average="macro")
@@ -109,17 +110,17 @@ class ResultCLS:
         self.pars = [self.acc, self.pre, self.rec, self.f1, self.auc]
         return
 
-    def print_multi(self, epoch: int, datatype='test'):
+    def print_multi(self, epoch: int, datatype='val'):
         self.stastic_multi()
         titles = ["dataset", "ACC", "PRE", "REC","F1", "AUC"]
         items = [datatype.upper()] + self.pars
         forma_1 = "\n|{:^8}" + "|{:^5}" * (len(titles) - 1) + "|"
         forma_2 = "\n|{:^8}" + "|{:^.3f}" * (len(titles) - 1) + "|"
-        logging.info(f"ACC: {self.pars[1]:.3f}, TIME: {self.time:.1f}s")
+        logging.info(f"AUC: {self.pars[-1]:.3f}, TIME: {self.time:.1f}s")
         logging.info((forma_1 + forma_2).format(*titles, *items))
         logging.debug(f"\n{self.cm}")
         self.epoch = epoch
-        if self.acc > self.best_result:
+        if self.auc > self.best_result:
             self.best_epoch = epoch
-            self.best_result = self.acc
+            self.best_result = self.auc
         return

@@ -20,7 +20,7 @@ from utils.result import ResultCLS as Result
 from utils.utils import init, save
 
 
-def train(epoch):
+def train(epoch,trainset):
     running_loss = 0.0
     this_lr = scheduler.get_last_lr()[0]
     net.train()
@@ -42,15 +42,15 @@ def train(epoch):
 
 
 @torch.no_grad()
-def eval(epoch):
+def eval(epoch,testset,datatype='val'):
     result.init()
     net.eval()
-    for image, label in tqdm(testset, ncols=60, desc='test', unit="b", leave=None):
+    for image, label in tqdm(testset, ncols=60, desc=datatype, unit="b", leave=None):
         image, label = image.to(device), label.to(device)
         with autocast(enabled=True):
             pred = net.forward(image)
             result.eval(label, pred)
-    result.print_multi(epoch)
+    result.print_multi(epoch,datatype)
     return
 
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-bs", type=int, default=16)
     parser.add_argument("-fold", type=int, default=0)
-    parser.add_argument("-data_path",type=str, default='/public_bme/data/NIH_X-ray/')
+    parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
     parser.add_argument("-data_info",type=str,default='nih_split.json')
     parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
     parser.add_argument("-lr", type=float, default=1e-3)
@@ -112,8 +112,11 @@ if __name__ == "__main__":
     result = Result(cfg.num_classes)
 
     for epoch in range(1, cfg.epochs+1):
-        train(epoch)
-        if epoch%5==0:
-            eval(epoch)
-            save(result, net, ckpt_path)
+        train(epoch,trainset)
+        if epoch%1==0:
+            eval(epoch,valset,datatype='val')
+            if result.best_epoch == result.epoch:
+                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_last.pt"))
+                eval(epoch,testset,datatype='test')
+                logging.info(f"BEST : {result.best_result:.3f}, EPOCH: {(result.best_epoch):3}")
 
