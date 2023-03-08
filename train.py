@@ -59,10 +59,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-bs", type=int, default=16)
     parser.add_argument("-fold", type=int, default=0)
-    parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
+    parser.add_argument("-data_path",type=str, default='/public_bme/data/NIH_X-ray/')
     parser.add_argument("-data_info",type=str,default='nih_split.json')
     parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
-    parser.add_argument("-lr", type=float, default=3e-4)
+    parser.add_argument("-lr", type=float, default=1e-3)
     parser.add_argument("-epochs", type=int, default=100)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
     ckpt_path = init()
-    device = 'cuda'
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     #   a.根据local_rank来设定当前使用哪块GPU
     # torch.cuda.set_device(local_rank)
@@ -96,6 +96,8 @@ if __name__ == "__main__":
             param.requires_grad = False
         for param in model.fc.parameters():
             param.requires_grad = True
+        num_params = sum(p.numel() for p in model.fc.parameters())
+        print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     else:
         print("Wrong training type")
