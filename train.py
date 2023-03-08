@@ -1,4 +1,5 @@
 import argparse
+from cgi import test
 import logging
 
 import torch
@@ -13,6 +14,7 @@ from tqdm import tqdm
 from base_vit import ViT
 from lora import LoRA_ViT
 from utils.dataloader import kneeDataloader
+from utils.dataloader_nih import nihDataloader
 from utils.result import ResultCLS as Result
 from utils.utils import init, save
 
@@ -47,7 +49,7 @@ def eval(epoch):
         with autocast(enabled=True):
             pred = net.forward(image)
             result.eval(label, pred)
-    result.print(epoch)
+    result.print_multi(epoch)
     return
 
 
@@ -56,17 +58,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-bs", type=int, default=16)
     parser.add_argument("-fold", type=int, default=0)
+    parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
+    parser.add_argument("-data_info",type=str,default='nih_split.json')
+    parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
     parser.add_argument("-lr", type=float, default=3e-4)
     parser.add_argument("-num_workers", type=int, default=4)
-    parser.add_argument("-num_classes", "-nc", type=int, default=5)
-    parser.add_argument("-train_type", "-tt", type=str, default="lora", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
+    parser.add_argument("-num_classes", "-nc", type=int, default=14)
+    parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
     ckpt_path = init()
     device = 'cuda'
 
     model = ViT('B_16_imagenet1k')
-    model.load_state_dict(torch.load('B_16_imagenet1k.pth'))
+    model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
         lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
@@ -89,15 +94,17 @@ if __name__ == "__main__":
         print("Wrong training type")
         exit()
     
-    trainset, testset = kneeDataloader(cfg)
-
-    loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
+    # trainset, testset = kneeDataloader(cfg)
+    trainset,valset, testset=nihDataloader(cfg)
+    loss_func = nn.BCEWithLogitsLoss().to(device)
+    # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, 100, 1e-6)
     result = Result(cfg.num_classes)
 
     for epoch in range(1, 101):
         train(epoch)
-        eval(epoch)
-        save(result, net, ckpt_path)
+        if epoch%5==0:
+            eval(epoch)
+            save(result, net, ckpt_path)
 
