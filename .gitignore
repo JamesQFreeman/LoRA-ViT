@@ -5,3 +5,6 @@
 *.pt
 *.log
 *.safetensors
+OAI-train
+__MACOSX
+

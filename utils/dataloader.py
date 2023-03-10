@@ -43,6 +43,25 @@ class GraphDataset(Dataset):
         label = torch.tensor(label, dtype=torch.long)
         return image, label
 
+def _kneeDataloader(bs):
+    train_set = DataLoader(
+        GraphDataset(data_type="train", fold_idx=0),
+        batch_size=bs,
+        shuffle=True,
+        num_workers=4,
+        drop_last=True,
+    )
+
+    test_set = DataLoader(
+        GraphDataset(data_type="test", fold_idx=0),
+        batch_size=bs,
+        shuffle=False,
+        num_workers=1,
+        drop_last=False,
+    )
+
+    return train_set, test_set
+
 
 def kneeDataloader(cfg):
     train_set = DataLoader(
