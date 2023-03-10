@@ -16,7 +16,7 @@ from base_vit import ViT
 from lora import LoRA_ViT
 from utils.dataloader import kneeDataloader
 from utils.dataloader_nih import nihDataloader
-from utils.result import ResultCLS as Result
+from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
 
@@ -50,7 +50,7 @@ def eval(epoch,testset,datatype='val'):
         with autocast(enabled=True):
             pred = net.forward(image)
             result.eval(label, pred)
-    result.print_multi(epoch,datatype)
+    result.print(epoch,datatype)
     return
 
 
@@ -60,10 +60,10 @@ if __name__ == "__main__":
     parser.add_argument("-bs", type=int, default=16)
     parser.add_argument("-fold", type=int, default=0)
     parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
-    parser.add_argument("-data_info",type=str,default='nih_split.json')
+    parser.add_argument("-data_info",type=str,default='nih_split_712.json')
     parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
     parser.add_argument("-lr", type=float, default=1e-3)
-    parser.add_argument("-epochs", type=int, default=100)
+    parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
     parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     cfg = parser.parse_args()
     ckpt_path = init()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logging.info(cfg)
 
     #   a.根据local_rank来设定当前使用哪块GPU
     # torch.cuda.set_device(local_rank)
@@ -109,14 +110,15 @@ if __name__ == "__main__":
     # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, cfg.epochs, 1e-6)
-    result = Result(cfg.num_classes)
+    result = ResultMLS(cfg.num_classes)
 
     for epoch in range(1, cfg.epochs+1):
         train(epoch,trainset)
         if epoch%1==0:
             eval(epoch,valset,datatype='val')
             if result.best_epoch == result.epoch:
-                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_last.pt"))
+                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
-                logging.info(f"BEST : {result.best_result:.3f}, EPOCH: {(result.best_epoch):3}")
+                logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc}, EPOCH: {(result.best_epoch):3}")
+                logging.info(result.test_mls_auc)
 
