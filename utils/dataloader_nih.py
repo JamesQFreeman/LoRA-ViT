@@ -30,7 +30,7 @@ disease={"Atelectasis":0,
 }
 
 class nihDataset(Dataset):
-    def __init__(self, dataPath='../data/NIH_X-ray/',dataInfo='nih_split.json',annotation='Data_Entry_2017_jpg.csv',data_type="train"):
+    def __init__(self, dataPath='../data/NIH_X-ray/',dataInfo='nih_split_712.json',annotation='Data_Entry_2017_jpg.csv',data_type="train"):
         self.namelist=json.load(open(os.path.join(dataPath,dataInfo)))[data_type]
         self.imgPath=os.path.join(dataPath,'images/')
         self.df = pd.read_csv(os.path.join(dataPath,annotation))
@@ -92,32 +92,32 @@ def nihDataloader(cfg):
     return train_set, val_set, test_set
 
 # if __name__=="__main__":
-    # prev_case=None
-    # dataInfo={}
-    # testset=[]
-    # with open('../data/NIH_X-ray/test_list_jpg.txt','r') as f:
-    #     content=f.readlines()
-    #     for c in content:
-    #         testset.append(c.strip('\n'))
+#     prev_case=None
+#     dataInfo={}
+#     testset=[]
+#     with open('../data/NIH_X-ray/test_list_jpg.txt','r') as f:
+#         content=f.readlines()
+#         for c in content:
+#             testset.append(c.strip('\n'))
     
-    # trainset=[]
-    # valset=[]
-    # train_ratio=0.75
-    # with open('../data/NIH_X-ray/train_val_list_jpg.txt','r') as f:
-    #     train_content=f.readlines()
-    #     trainNum=int(len(train_content)*train_ratio)
-    #     for i in range(0,trainNum):
-    #         trainset.append(train_content[i].strip('\n'))
-    #     for i in range(trainNum,len(train_content)):
-    #         valset.append(train_content[i].strip('\n'))
-    #     # for c in content:
-    #     #     testset.append(c.strip('\n'))
-    # # dataInfo['test']=testset
-    # dataInfo['meta']={'trainSize':len(trainset),'valSize':len(valset),'testSize':len(testset),'train_val_ratio':"75%/25%"}
-    # dataInfo['train']=trainset
-    # dataInfo['val']=valset
-    # dataInfo['test']=testset
+#     trainset=[]
+#     valset=[]
+#     train_ratio=7/8
+#     with open('../data/NIH_X-ray/train_val_list_jpg.txt','r') as f:
+#         train_content=f.readlines()
+#         trainNum=int(len(train_content)*train_ratio)
+#         for i in range(0,trainNum):
+#             trainset.append(train_content[i].strip('\n'))
+#         for i in range(trainNum,len(train_content)):
+#             valset.append(train_content[i].strip('\n'))
+#         # for c in content:
+#         #     testset.append(c.strip('\n'))
+#     # dataInfo['test']=testset
+#     dataInfo['meta']={'trainSize':len(trainset),'valSize':len(valset),'testSize':len(testset)}
+#     dataInfo['train']=trainset
+#     dataInfo['val']=valset
+#     dataInfo['test']=testset
     
-    # with open('nih_split.json', 'w') as json_file:
-    #     json.dump(dataInfo, json_file,indent = 4)
+#     with open('nih_split_712.json', 'w') as json_file:
+#         json.dump(dataInfo, json_file,indent = 4)
 
