@@ -10,7 +10,13 @@
 source activate idea
 nvidia-smi
 
-
+PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
+python train.py -bs 128 \
+                -data_path '/public_bme/data/NIH_X-ray/' \
+                -lr 1e-3 \
+                -epochs 20 \
+                -train_type 'resnet50' \
+                -r 4 \
 
 # PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
 # python train.py -bs 128 \
@@ -20,13 +26,13 @@ nvidia-smi
 #                 -train_type 'full' \
 #                 -r 4 \
 
-PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
-python train.py -bs 128 \
-                -data_path '/public_bme/data/NIH_X-ray/' \
-                -lr 3e-5 \
-                -epochs 20 \
-                -train_type 'lora' \
-                -r 4 \
+# PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \
+# python train.py -bs 128 \
+#                 -data_path '/public_bme/data/NIH_X-ray/' \
+#                 -lr 3e-5 \
+#                 -epochs 20 \
+#                 -train_type 'lora' \
+#                 -r 4 \
 
 
 # PYTHONPATH="$(dirname $0)/..":$PYTHONPATH \

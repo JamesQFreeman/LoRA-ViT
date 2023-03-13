@@ -1,6 +1,7 @@
 import argparse
 from cgi import test
 import logging
+from torchvision import models
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch
@@ -77,9 +78,12 @@ if __name__ == "__main__":
     # torch.cuda.set_device(local_rank)
     #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
     # dist.init_process_group(backend='nccl')
-
-    model = ViT('B_16_imagenet1k')
-    model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
+    if cfg.train_type=='resnet50':
+        model=models.__dict__[cfg.train_type]
+        model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
+    else:
+        model = ViT('B_16_imagenet1k')
+        model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
         lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
@@ -100,14 +104,20 @@ if __name__ == "__main__":
         num_params = sum(p.numel() for p in model.fc.parameters())
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
+    elif cfg.train_type=='resnet':
+        infeature = model.fc.in_features
+        model.fc = nn.Linear(infeature, cfg.num_classes)
+        num_params = sum(p.numel() for p in model.fc.parameters())
+        print(f"trainable parameters: {num_params/2**20:.3f}M")
+        net = model.to(device)
     else:
         print("Wrong training type")
         exit()
     net = torch.nn.DataParallel(net) 
     # trainset, testset = kneeDataloader(cfg)
+    # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     trainset,valset, testset=nihDataloader(cfg)
     loss_func = nn.BCEWithLogitsLoss().to(device)
-    # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, cfg.epochs, 1e-6)
     result = ResultMLS(cfg.num_classes)
