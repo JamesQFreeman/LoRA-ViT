@@ -79,8 +79,10 @@ if __name__ == "__main__":
     #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
     # dist.init_process_group(backend='nccl')
     if cfg.train_type=='resnet50':
-        model=models.__dict__[cfg.train_type]
+        model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
+
+        # model.load_state_dict()
     else:
         model = ViT('B_16_imagenet1k')
         model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
@@ -104,7 +106,7 @@ if __name__ == "__main__":
         num_params = sum(p.numel() for p in model.fc.parameters())
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
-    elif cfg.train_type=='resnet':
+    elif cfg.train_type=='resnet50':
         infeature = model.fc.in_features
         model.fc = nn.Linear(infeature, cfg.num_classes)
         num_params = sum(p.numel() for p in model.fc.parameters())
