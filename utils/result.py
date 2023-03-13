@@ -27,9 +27,12 @@ class ResultCLS:
     def __init__(self, num_cls) -> None:
         self.epoch = 1
         self.best_epoch = 0
-        self.best_result = 0.0
-        self.test_result = 0.0
+        self.best_val_result = 0.0
+        self.test_acc = 0.0
+        self.test_auc = 0.0
+        self.test_f1 = 0.0
         self.num_cls = num_cls
+
         return
 
     def eval(self, label, pred):
@@ -71,18 +74,25 @@ class ResultCLS:
 
     def print(self, epoch: int, datatype='test'):
         self.stastic()
-        titles = ["dataset", "ACC", "SEN", "SPE", "PRE", "F1S", "AUC"]
+        titles = ["dataset", "ACC", "SEN", "SPE", "PRE", "F1", "AUC"]
         items = [datatype.upper()] + self.pars
         forma_1 = "\n|{:^8}" + "|{:^5}" * (len(titles) - 1) + "|"
         forma_2 = "\n|{:^8}" + "|{:^.3f}" * (len(titles) - 1) + "|"
-        logging.info(f"ACC: {self.pars[1]:.3f}, TIME: {self.time:.1f}s")
+        # logging.info(f"ACC: {self.pars[1]:.3f}, TIME: {self.time:.1f}s")
+        logging.info(f"ACC: {self.pars[0]:.3f}, TIME: {self.time:.1f}s")
         logging.info((forma_1 + forma_2).format(*titles, *items))
-        logging.debug(f"\n{self.cm}")
+        # logging.debug(f"\n{self.cm}")
         self.epoch = epoch
 
-        if self.acc > self.best_result:
+        if datatype == 'test':
+            self.test_acc=self.acc
+            self.test_auc=self.auc
+            self.test_f1=self.f1
+            return
+
+        if datatype == 'val' and self.acc > self.best_val_result:
             self.best_epoch = epoch
-            self.best_result = self.acc
+            self.best_val_result = self.acc
         return
 
 
