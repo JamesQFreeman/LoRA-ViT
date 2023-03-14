@@ -55,30 +55,7 @@ def eval(epoch,testset,datatype='val'):
     result.print(epoch,datatype)
     return
 
-
-if __name__ == "__main__":
-    scaler = GradScaler()
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-bs", type=int, default=16)
-    parser.add_argument("-fold", type=int, default=0)
-    parser.add_argument("-data_path",type=str, default='../data/INBreast/')
-    parser.add_argument("-data_info",type=str,default='foldInfo.json')
-    parser.add_argument("-lr", type=float, default=1e-3)
-    parser.add_argument("-epochs", type=int, default=5)
-    parser.add_argument("-kfold", type=int, default=5)
-    parser.add_argument("-num_workers", type=int, default=4)
-    parser.add_argument("-num_classes", "-nc", type=int, default=3)
-    parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
-    parser.add_argument("-rank", "-r", type=int, default=4)
-    cfg = parser.parse_args()
-    ckpt_path = init()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    logging.info(cfg)
-
-    #   a.根据local_rank来设定当前使用哪块GPU
-    # torch.cuda.set_device(local_rank)
-    #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
-    # dist.init_process_group(backend='nccl')
+def parseNet(cfg):
     if cfg.train_type=='resnet50':
         model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
@@ -114,10 +91,33 @@ if __name__ == "__main__":
     else:
         print("Wrong training type")
         exit()
-    net = torch.nn.DataParallel(net) 
-    # trainset, testset = kneeDataloader(cfg)
+    return net
+
+
+if __name__ == "__main__":
+    scaler = GradScaler()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-bs", type=int, default=8)
+    parser.add_argument("-fold", type=int, default=0)
+    parser.add_argument("-data_path",type=str, default='../data/INBreast/')
+    parser.add_argument("-data_info",type=str,default='foldInfo.json')
+    parser.add_argument("-lr", type=float, default=3e-5)
+    parser.add_argument("-epochs", type=int, default=20)
+    parser.add_argument("-kfold", type=int, default=5)
+    parser.add_argument("-num_workers", type=int, default=4)
+    parser.add_argument("-num_classes", "-nc", type=int, default=3)
+    parser.add_argument("-train_type", "-tt", type=str, default="full", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
+    parser.add_argument("-rank", "-r", type=int, default=4)
+    cfg = parser.parse_args()
+    ckpt_path = init()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logging.info(cfg)
+
     stat=np.zeros([cfg.kfold,3])
     for k in range(cfg.kfold):
+        logging.info(f"============== Fold: {k} ==============")
+        net=parseNet(cfg)
+        net = torch.nn.DataParallel(net) 
         loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
         trainset,valset, testset=InbreastDataloader(cfg,fold=k)
         optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
@@ -135,6 +135,7 @@ if __name__ == "__main__":
         stat[k][0]=result.test_acc
         stat[k][1]=result.test_auc
         stat[k][2]=result.test_f1
+    logging.info(f"============== {cfg.kfold} fold results: ==============")
     logging.info(f"ACC: {stat.mean(axis=0)[0]}±{stat.std(axis=0)[0]}")
     logging.info(f"AUC: {stat.mean(axis=0)[1]}±{stat.std(axis=0)[1]}")
     logging.info(f"F1: {stat.mean(axis=0)[2]}±{stat.std(axis=0)[2]}")

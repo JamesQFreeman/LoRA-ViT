@@ -66,7 +66,7 @@ class InbreastDataset(Dataset):
         info=self.dataset[idx]
         filename=info['img']
         img = Image.open(os.path.join(self.dataPath,filename)).convert("RGB")
-        img=self.pre_img(img)
+        # img=self.pre_img(img)
         img=self.trans(img)
         # # img_clahe=torch.tensor(img_clahe,dtype=torch.float32)
         # img=torch.permute(img,dims=[2,0,1])
