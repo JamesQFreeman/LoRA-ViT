@@ -74,9 +74,9 @@ class InbreastDataset(Dataset):
         if level=='1':
             gt=0
         elif level=='2' or level=='3':
-            gt=1
+            gt=0
         else:
-            gt=2
+            gt=1
         
         gt=torch.tensor(gt,dtype=torch.long)
 

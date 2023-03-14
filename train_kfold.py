@@ -105,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-kfold", type=int, default=5)
     parser.add_argument("-num_workers", type=int, default=4)
-    parser.add_argument("-num_classes", "-nc", type=int, default=3)
+    parser.add_argument("-num_classes", "-nc", type=int, default=2)
     parser.add_argument("-train_type", "-tt", type=str, default="full", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
