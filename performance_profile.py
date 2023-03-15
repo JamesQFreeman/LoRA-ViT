@@ -71,7 +71,7 @@ class GRAMProfile:
     @staticmethod
     def test_lora():
         model = ViT('B_16_imagenet1k')
-        lora_model = LoRA_ViT(model, r=4, num_classes=1000)
+        lora_model = LoRA_ViT(model, r=4, num_classes=1000, lora_layer=)
         if GPU:
             lora_model = lora_model.to("cuda")
         optimizer = torch.optim.SGD(lora_model.parameters(), lr=0.1)

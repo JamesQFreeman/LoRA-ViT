@@ -6,3 +6,5 @@
 *.log
 *.safetensors
 *.out
+OAI-train
+__MACOSX
