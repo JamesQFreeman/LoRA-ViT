@@ -38,8 +38,8 @@ def init():
 
 def save(result, net, ckpt_path):
     # Save best model
-    if result.best_epoch == result.epoch:
-        torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
+    
     torch.save(net.state_dict(), ckpt_path.replace(".pt", "_last.pt"))
+
     logging.info(f"BEST : {result.best_result:.3f}, EPOCH: {(result.best_epoch):3}")
     return
