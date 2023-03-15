@@ -1,11 +1,28 @@
 # LoRA-ViT
 Low rank adaptation for Vision Transformer, we supported segmentation and classification.
+# Feature
+- [x] Supported DeepLab segmentation for ```lukemelas/PyTorch-Pretrained-ViT```. 20230315
+- [x] Supported ```timm```. 20230316
+- [ ] Repo clean up.
 
 ## Installation
 Gii clone. My ```torch.__version__==1.13.0```, other version newer than ```torch.__version__==1.10.0``` should also work, I guess.
 You may also need a ```safetensors``` from huggingface to load and save weight.
 
 ## Usage
+You may use Vision Transformer from ```timm```:
+```python
+import timm
+import torch
+from lora import LoRA_ViT_timm
+img = torch.randn(2, 3, 224, 224)
+model = timm.create_model('vit_base_patch16_224', pretrained=True)
+lora_vit = LoRA_ViT_timm(vit_model=model, r=4, dim=768, num_classes=10)
+pred = lora_vit(img)
+print(pred.shape)
+```
+
+If timm is too complicated, you can use a simpler implementation of ViT from ```lukemelas/PyTorch-Pretrained-ViT```.
 Wrap you ViT using LoRA-ViT, this a simple example of classifer
 ```python
 from base_vit import ViT
