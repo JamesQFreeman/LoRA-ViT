@@ -31,6 +31,9 @@ class ResultCLS:
         self.test_acc = 0.0
         self.test_auc = 0.0
         self.test_f1 = 0.0
+        self.test_sen = 0.0
+        self.test_spe = 0.0
+        self.test_pre = 0.0
         self.num_cls = num_cls
 
         return
@@ -88,11 +91,14 @@ class ResultCLS:
             self.test_acc=self.acc
             self.test_auc=self.auc
             self.test_f1=self.f1
+            self.test_sen=self.sen
+            self.test_spe=self.spe
+            self.test_pre=self.pre
             return
 
-        if datatype == 'val' and self.acc > self.best_val_result:
+        if datatype == 'val' and self.auc > self.best_val_result:
             self.best_epoch = epoch
-            self.best_val_result = self.acc
+            self.best_val_result = self.auc
         return
 
 
