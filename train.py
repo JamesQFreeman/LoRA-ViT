@@ -67,6 +67,7 @@ if __name__ == "__main__":
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
+    parser.add_argument("-backbone", type=str, default=)
     parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
@@ -74,15 +75,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(cfg)
 
-    #   a.根据local_rank来设定当前使用哪块GPU
-    # torch.cuda.set_device(local_rank)
-    #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
-    # dist.init_process_group(backend='nccl')
     if cfg.train_type=='resnet50':
         model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
-
-        # model.load_state_dict()
+        infeature = model.fc.in_features
+        model.fc = nn.Linear(infeature, cfg.num_classes)
+        num_params = sum(p.numel() for p in model.parameters())
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
+        net = model.to(device)
     else:
         model = ViT('B_16_imagenet1k')
         model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
@@ -90,12 +90,12 @@ if __name__ == "__main__":
     if cfg.train_type == "lora":
         lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = lora_model.to(device)
     elif cfg.train_type == "full":
         model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = model.to(device)
     elif cfg.train_type == "linear":
         model.fc = nn.Linear(768, cfg.num_classes)
@@ -104,16 +104,10 @@ if __name__ == "__main__":
         for param in model.fc.parameters():
             param.requires_grad = True
         num_params = sum(p.numel() for p in model.fc.parameters())
-        print(f"trainable parameters: {num_params/2**20:.3f}M")
-        net = model.to(device)
-    elif cfg.train_type=='resnet50':
-        infeature = model.fc.in_features
-        model.fc = nn.Linear(infeature, cfg.num_classes)
-        num_params = sum(p.numel() for p in model.fc.parameters())
-        print(f"trainable parameters: {num_params/2**20:.3f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = model.to(device)
     else:
-        print("Wrong training type")
+        logging.info("Wrong training type")
         exit()
     net = torch.nn.DataParallel(net) 
     # trainset, testset = kneeDataloader(cfg)

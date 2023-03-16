@@ -140,10 +140,10 @@ if __name__ == "__main__":
         stat[k][4]=result.test_f1
         stat[k][5]=result.test_auc
     logging.info(f"============== {cfg.kfold} fold results: ==============")
-    logging.info(f"ACC: {stat.mean(axis=0)[0]}±{stat.std(axis=0)[0]}")
-    logging.info(f"SEN: {stat.mean(axis=0)[1]}±{stat.std(axis=0)[1]}")
-    logging.info(f"SPE: {stat.mean(axis=0)[2]}±{stat.std(axis=0)[2]}")
-    logging.info(f"PRE: {stat.mean(axis=0)[3]}±{stat.std(axis=0)[3]}")
-    logging.info(f"F1: {stat.mean(axis=0)[4]}±{stat.std(axis=0)[4]}")
-    logging.info(f"AUC: {stat.mean(axis=0)[5]}±{stat.std(axis=0)[5]}")
+    logging.info(f"ACC: {stat.mean(axis=0)[0]:.3f}±{stat.std(axis=0)[0]:.3f}")
+    logging.info(f"SEN: {stat.mean(axis=0)[1]:.3f}±{stat.std(axis=0)[1]:.3f}")
+    logging.info(f"SPE: {stat.mean(axis=0)[2]:.3f}±{stat.std(axis=0)[2]:.3f}")
+    logging.info(f"PRE: {stat.mean(axis=0)[3]:.3f}±{stat.std(axis=0)[3]:.3f}")
+    logging.info(f"F1: {stat.mean(axis=0)[4]:.3f}±{stat.std(axis=0)[4]:.3f}")
+    logging.info(f"AUC: {stat.mean(axis=0)[5]:.3f}±{stat.std(axis=0)[5]:.3f}")
 
