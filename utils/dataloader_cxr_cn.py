@@ -4,58 +4,69 @@ import numpy as np
 import torch
 from einops import rearrange
 from PIL import Image
-from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import Resize
 from torchvision.transforms import Normalize
+from torchvision.transforms import RandomHorizontalFlip
 
 
 class GraphDataset(Dataset):
-    def __init__(self, data_type="train", fold_idx=0):
-        kf = KFold(n_splits=5, shuffle=True, random_state=42)
-
+    def __init__(self, data_type="train", fold_idx=0, data_path="ChinaSet_AllFiles"):
         cases = []
-        for case in os.listdir(f"ChinaSet_AllFiles/CXR_png"):
+        labels = []
+        for case in os.listdir(f"{data_path}/CXR_png"):
             if ".png" in case:
-                cases = cases + [f"ChinaSet_AllFiles/CXR_png/{case}"]
-        cases.sort()
+                cases = cases + [f"{data_path}/CXR_png/{case}"]
+                labels.append(int(case.split("_")[-1].split(".")[0]))
 
-        train_index, test_index = list(kf.split(cases))[fold_idx]
+        train_cases, test_cases, train_labels, test_labels = train_test_split(cases, labels, test_size=0.1, shuffle=True, random_state=42)
+        train_cases, val_cases, train_labels, val_labels = train_test_split(train_cases, train_labels, test_size=0.2, shuffle=True, random_state=42)
+
         if data_type == "train":
-            idx = train_index
+            self.cases = np.array(train_cases)
+            self.labels = np.array(train_labels)
         elif data_type == "test":
-            idx = test_index
+            self.cases = np.array(test_cases)
+            self.labels = np.array(test_labels)
+        elif data_type == "val":
+            self.cases = np.array(val_cases)
+            self.labels = np.array(val_labels)
         else:
             print("Dataset type error")
             exit()
-        self.cases = np.array(cases)[idx]
 
     def __len__(self):
         # return 100
         return len(self.cases)
 
     def __getitem__(self, idx):
-        resize = Resize([384, 384])
+        resize = Resize([224, 224])
         normalize = Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        random_flip = RandomHorizontalFlip(p=0.5)
         image = np.array(Image.open(self.cases[idx]).convert("RGB")).astype(np.float32) / 255.0
         image = rearrange(torch.tensor(image, dtype=torch.float32), 'h w c -> c h w')
         image = resize(image)
         image = normalize(image)
+        image = random_flip(image)
         
-        label_id = self.cases[idx].split("/")[2].split(".")[0]
-        with open("ChinaSet_AllFiles/ClinicalReadings/" + label_id + ".txt", "r") as f:
-            data = f.readlines()
-            if data[1] == "normal":
-                label = 0
-            else:
-                label = 1
+        label = self.labels[idx]
         label = torch.tensor(label, dtype=torch.long)
+        
         return image, label
 
 
 def cxrDataloader(cfg):
     train_set = DataLoader(
-        GraphDataset(data_type="train", fold_idx=cfg.fold),
+        GraphDataset(data_type="train", fold_idx=cfg.fold, data_path=cfg.data_path),
+        batch_size=cfg.bs,
+        shuffle=True,
+        num_workers=cfg.num_workers,
+        drop_last=True,
+    )
+    
+    val_set = DataLoader(
+        GraphDataset(data_type="val", fold_idx=cfg.fold, data_path=cfg.data_path),
         batch_size=cfg.bs,
         shuffle=True,
         num_workers=cfg.num_workers,
@@ -63,12 +74,12 @@ def cxrDataloader(cfg):
     )
 
     test_set = DataLoader(
-        GraphDataset(data_type="test", fold_idx=cfg.fold),
+        GraphDataset(data_type="test", fold_idx=cfg.fold, data_path=cfg.data_path),
         batch_size=cfg.bs,
         shuffle=False,
         num_workers=cfg.num_workers,
         drop_last=False,
     )
 
-    return train_set, test_set
+    return train_set, val_set, test_set
 

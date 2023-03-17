@@ -7,4 +7,7 @@
 *.safetensors
 *.out
 OAI-train
+ChinaSet_AllFiles
+blood-cells
 __MACOSX
+*.sh
