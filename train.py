@@ -86,7 +86,7 @@ if __name__ == "__main__":
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
-    parser.add_argument("-backbone", type=str, default='base')
+    parser.add_argument("-backbone", type=str, default='base(384)')
     parser.add_argument("-train_type", "-tt", type=str, default="adapter", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()

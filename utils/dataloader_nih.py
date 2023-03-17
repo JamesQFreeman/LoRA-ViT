@@ -31,11 +31,11 @@ disease={"Atelectasis":0,
 
 class nihDataset(Dataset):
     def __init__(self, dataPath='../data/NIH_X-ray/',dataInfo='nih_split_712.json',annotation='Data_Entry_2017_jpg.csv',data_type="train"):
-        self.namelist=json.load(open(os.path.join(dataPath,dataInfo)))[data_type][:10000]
+        self.namelist=json.load(open(os.path.join(dataPath,dataInfo)))[data_type]
         self.imgPath=os.path.join(dataPath,'images/')
         self.df = pd.read_csv(os.path.join(dataPath,annotation))
         self.trans=T.Compose([
-            T.Resize(size=224),
+            T.Resize(size=384),
             T.RandomHorizontalFlip(p=0.5),
             T.ToTensor(),
             T.Normalize(
