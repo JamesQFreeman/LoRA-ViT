@@ -205,8 +205,8 @@ class _LoRA_qkv_timm(nn.Module):
         qkv = self.qkv(x)  # B,N,3*org_C
         new_q = self.linear_b_q(self.linear_a_q(x))
         new_v = self.linear_b_v(self.linear_a_v(x))
-        qkv[:, :, :768] += new_q
-        qkv[:, :, -768:] += new_v
+        qkv[:, :, :self.dim] += new_q
+        qkv[:, :, -self.dim:] += new_v
         return qkv
 
 
@@ -214,7 +214,6 @@ class LoRA_ViT_timm(nn.Module):
     def __init__(self,
                  vit_model: timm_ViT,
                  r: int,
-                 dim: int,
                  num_classes: int = 0,
                  lora_layer=None):
         super(LoRA_ViT_timm, self).__init__()
@@ -240,10 +239,11 @@ class LoRA_ViT_timm(nn.Module):
             if t_layer_i not in self.lora_layer:
                 continue
             w_qkv_linear = blk.attn.qkv
-            w_a_linear_q = nn.Linear(dim, r, bias=False)
-            w_b_linear_q = nn.Linear(r, dim, bias=False)
-            w_a_linear_v = nn.Linear(dim, r, bias=False)
-            w_b_linear_v = nn.Linear(r, dim, bias=False)
+            self.dim = w_qkv_linear.in_features
+            w_a_linear_q = nn.Linear(self.dim, r, bias=False)
+            w_b_linear_q = nn.Linear(r, self.dim, bias=False)
+            w_a_linear_v = nn.Linear(self.dim, r, bias=False)
+            w_b_linear_v = nn.Linear(r, self.dim, bias=False)
             self.w_As.append(w_a_linear_q)
             self.w_Bs.append(w_b_linear_q)
             self.w_As.append(w_a_linear_v)
@@ -259,7 +259,7 @@ class LoRA_ViT_timm(nn.Module):
         self.lora_vit = vit_model
         if num_classes > 0:
             self.lora_vit.head = nn.Linear(
-                dim, num_classes)
+                self.dim, num_classes)
 
     def save_fc_parameters(self,
                            filename: str) -> None:
