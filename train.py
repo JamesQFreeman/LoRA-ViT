@@ -17,12 +17,13 @@ from adapter import Adapter_ViT
 from base_vit import ViT
 from lora import LoRA_ViT,LoRA_ViT_timm
 from utils.dataloader_oai import kneeDataloader
-from utils.dataloader_nih import nihDataloader
+from utils.dataloader_nih import nihDataloader,disease
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
 weightInfo={
             # "small":"WinKawaks/vit-small-patch16-224",
+            "base(384)":"hf_hub:timm/vit_base_patch16_384.orig_in21k_ft_in1k",
             "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
             "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
             "base_sam":"vit_base_patch16_224.sam", # 1k
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
     parser.add_argument("-backbone", type=str, default='base')
-    parser.add_argument("-train_type", "-tt", type=str, default="lora", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
+    parser.add_argument("-train_type", "-tt", type=str, default="adapter", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
     ckpt_path = init()
@@ -151,5 +152,11 @@ if __name__ == "__main__":
                 torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
                 logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc:.4f}, EPOCH: {(result.best_epoch):3}")
-                logging.info(result.test_mls_auc)
+                message="|"
+                title="|"
+                for idx,i in enumerate(result.test_mls_auc):
+                    title+=f"{list(disease)[idx]:^20}|"
+                    message+=f"{i:^20.4f}|"
+                logging.info(title)
+                logging.info(message)
 
