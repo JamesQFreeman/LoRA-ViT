@@ -66,12 +66,12 @@ def parseNet(cfg):
     if cfg.train_type == "lora":
         lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.1f}M")
         net = lora_model.to(device)
     elif cfg.train_type == "full":
         model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.1f}M")
         net = model.to(device)
     elif cfg.train_type == "linear":
         model.fc = nn.Linear(768, cfg.num_classes)
@@ -80,13 +80,13 @@ def parseNet(cfg):
         for param in model.fc.parameters():
             param.requires_grad = True
         num_params = sum(p.numel() for p in model.fc.parameters())
-        print(f"trainable parameters: {num_params/2**20:.3f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     elif cfg.train_type=='resnet50':
         infeature = model.fc.in_features
         model.fc = nn.Linear(infeature, cfg.num_classes)
         num_params = sum(p.numel() for p in model.fc.parameters())
-        print(f"trainable parameters: {num_params/2**20:.3f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     else:
         print("Wrong training type")
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(cfg)
 
-    stat=np.zeros([cfg.kfold,3])
+    stat=np.zeros([cfg.kfold,7])
     for k in range(cfg.kfold):
         logging.info(f"============== Fold: {k} ==============")
         net=parseNet(cfg)
@@ -131,12 +131,19 @@ if __name__ == "__main__":
                 if result.best_epoch == result.epoch:
                     torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                     eval(epoch,testset,datatype='test')
-                    logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST ACC: {result.test_acc:.4f}, TEST AUC: {result.test_auc:.4f}, TEST F1: {result.test_f1:.4f}, EPOCH: {(result.best_epoch):3}")
+                    logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST ACC: {result.test_acc:.4f}, TEST SEN: {result.test_sen:.4f}, TEST SPE: {result.test_spe:.4f},\
+                                   TEST PRE: {result.test_sen:.4f},TEST F1: {result.test_f1:.4f}, TEST AUC: {result.test_auc:.4f}, EPOCH: {(result.best_epoch):3}")
         stat[k][0]=result.test_acc
-        stat[k][1]=result.test_auc
-        stat[k][2]=result.test_f1
+        stat[k][1]=result.test_sen
+        stat[k][2]=result.test_spe
+        stat[k][3]=result.test_pre
+        stat[k][4]=result.test_f1
+        stat[k][5]=result.test_auc
     logging.info(f"============== {cfg.kfold} fold results: ==============")
-    logging.info(f"ACC: {stat.mean(axis=0)[0]}±{stat.std(axis=0)[0]}")
-    logging.info(f"AUC: {stat.mean(axis=0)[1]}±{stat.std(axis=0)[1]}")
-    logging.info(f"F1: {stat.mean(axis=0)[2]}±{stat.std(axis=0)[2]}")
+    logging.info(f"ACC: {stat.mean(axis=0)[0]:.3f}±{stat.std(axis=0)[0]:.3f}")
+    logging.info(f"SEN: {stat.mean(axis=0)[1]:.3f}±{stat.std(axis=0)[1]:.3f}")
+    logging.info(f"SPE: {stat.mean(axis=0)[2]:.3f}±{stat.std(axis=0)[2]:.3f}")
+    logging.info(f"PRE: {stat.mean(axis=0)[3]:.3f}±{stat.std(axis=0)[3]:.3f}")
+    logging.info(f"F1: {stat.mean(axis=0)[4]:.3f}±{stat.std(axis=0)[4]:.3f}")
+    logging.info(f"AUC: {stat.mean(axis=0)[5]:.3f}±{stat.std(axis=0)[5]:.3f}")
 

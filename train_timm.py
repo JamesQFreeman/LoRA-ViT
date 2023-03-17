@@ -22,6 +22,32 @@ from utils.dataloader_nih import nihDataloader
 from utils.result import ResultCLS
 from utils.utils import init, save
 
+hiddenSize={
+            "small":768,
+            "base":768,
+            "large":1024,
+            "huge":1280
+            }
+weightInfo={
+            # "small":"WinKawaks/vit-small-patch16-224",
+            # "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
+            "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
+            "base_sam":"vit_base_patch16_224.sam", # 1k
+            "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
+            "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
+            "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
+            "base_deit":"deit_base_distilled_patch16_224", # 1k
+            # "large":"google/vit-large-patch16-224",
+            "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
+            "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
+            "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
+            "giant_eva":"eva_giant_patch14_224.clip_ft_in1k", # laion-> 1k
+            "giant_clip":"vit_giant_patch14_clip_224.laion2b",
+            "giga_clip":"vit_gigantic_patch14_clip_224.laion2b"
+            }
+    
+    
+
 
 def train(epoch,trainset):
     running_loss = 0.0
@@ -77,10 +103,6 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(cfg)
 
-    #   a.根据local_rank来设定当前使用哪块GPU
-    # torch.cuda.set_device(local_rank)
-    #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
-    # dist.init_process_group(backend='nccl')
     if cfg.train_type=='resnet50':
         model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
@@ -93,12 +115,15 @@ if __name__ == "__main__":
             model = timm.create_model("vit_small_patch16_224", pretrained=False, checkpoint_path="../preTrain/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz")
         elif cfg.vit == "large":
             model = timm.create_model("vit_large_patch16_224", pretrained=False, checkpoint_path="../preTrain/L_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.1-sd_0.1--imagenet2012-steps_20k-lr_0.01-res_224.npz")
+        elif cfg.vit in weightInfo:
+            model = timm.create_model(weightInfo[cfg.vit], pretrained=True)
         else:
             print("Wrong training type")
             exit()
-        
+
+    hidden_dim=hiddenSize[cfg.vit.split('_')[0]]
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT_timm(model, r=cfg.rank, dim=768, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT_timm(model, r=cfg.rank, dim=hidden_dim, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = lora_model.to(device)

@@ -12,14 +12,27 @@ from torch.cuda.amp.autocast_mode import autocast
 from torch.cuda.amp.grad_scaler import GradScaler
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
-
+import timm
 from base_vit import ViT
-from lora import LoRA_ViT
-from utils.dataloader import kneeDataloader
+from lora import LoRA_ViT,LoRA_ViT_timm
+from utils.dataloader_oai import kneeDataloader
 from utils.dataloader_nih import nihDataloader
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
+weightInfo={"base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
+            "base_sam":"vit_base_patch16_224.sam", # 1k
+            "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
+            "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
+            "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
+            "base_deit":"deit_base_distilled_patch16_224", # 1k
+            "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
+            "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
+            "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
+            "giant_eva":"eva_giant_patch14_224.clip_ft_in1k", # laion-> 1k
+            "giant_clip":"vit_giant_patch14_clip_224.laion2b",
+            "giga_clip":"vit_gigantic_patch14_clip_224.laion2b"
+            }
 
 def train(epoch,trainset):
     running_loss = 0.0
@@ -67,7 +80,8 @@ if __name__ == "__main__":
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
-    parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
+    parser.add_argument("-backbone", type=str, default='base_dino')
+    parser.add_argument("-train_type", "-tt", type=str, default="lora", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
     ckpt_path = init()
@@ -81,21 +95,26 @@ if __name__ == "__main__":
     if cfg.train_type=='resnet50':
         model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
-
-        # model.load_state_dict()
+        infeature = model.fc.in_features
+        model.fc = nn.Linear(infeature, cfg.num_classes)
+        num_params = sum(p.numel() for p in model.parameters())
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
+        net = model.to(device)
     else:
-        model = ViT('B_16_imagenet1k')
-        model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
+        model = timm.create_model(weightInfo[cfg.backbone], pretrained=True)
+        # model = ViT('B_16_imagenet1k')
+        # model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
+        # lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = lora_model.to(device)
     elif cfg.train_type == "full":
         model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print(f"trainable parameters: {num_params/2**20:.1f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = model.to(device)
     elif cfg.train_type == "linear":
         model.fc = nn.Linear(768, cfg.num_classes)
@@ -104,16 +123,10 @@ if __name__ == "__main__":
         for param in model.fc.parameters():
             param.requires_grad = True
         num_params = sum(p.numel() for p in model.fc.parameters())
-        print(f"trainable parameters: {num_params/2**20:.3f}M")
-        net = model.to(device)
-    elif cfg.train_type=='resnet50':
-        infeature = model.fc.in_features
-        model.fc = nn.Linear(infeature, cfg.num_classes)
-        num_params = sum(p.numel() for p in model.fc.parameters())
-        print(f"trainable parameters: {num_params/2**20:.3f}M")
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = model.to(device)
     else:
-        print("Wrong training type")
+        logging.info("Wrong training type")
         exit()
     net = torch.nn.DataParallel(net) 
     # trainset, testset = kneeDataloader(cfg)
