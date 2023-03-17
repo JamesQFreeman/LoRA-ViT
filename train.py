@@ -13,6 +13,7 @@ from torch.cuda.amp.grad_scaler import GradScaler
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 import timm
+from adapter import Adapter_ViT 
 from base_vit import ViT
 from lora import LoRA_ViT,LoRA_ViT_timm
 from utils.dataloader_oai import kneeDataloader
@@ -20,12 +21,16 @@ from utils.dataloader_nih import nihDataloader
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
-weightInfo={"base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
+weightInfo={
+            # "small":"WinKawaks/vit-small-patch16-224",
+            "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
+            "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
             "base_sam":"vit_base_patch16_224.sam", # 1k
             "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
             "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
             "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
             "base_deit":"deit_base_distilled_patch16_224", # 1k
+            # "large":"google/vit-large-patch16-224",
             "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
             "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
             "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
@@ -71,7 +76,7 @@ def eval(epoch,testset,datatype='val'):
 if __name__ == "__main__":
     scaler = GradScaler()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-bs", type=int, default=16)
+    parser.add_argument("-bs", type=int, default=128)
     parser.add_argument("-fold", type=int, default=0)
     parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
     parser.add_argument("-data_info",type=str,default='nih_split_712.json')
@@ -80,7 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
-    parser.add_argument("-backbone", type=str, default='base_dino')
+    parser.add_argument("-backbone", type=str, default='base')
     parser.add_argument("-train_type", "-tt", type=str, default="lora", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
@@ -88,10 +93,6 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(cfg)
 
-    #   a.根据local_rank来设定当前使用哪块GPU
-    # torch.cuda.set_device(local_rank)
-    #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
-    # dist.init_process_group(backend='nccl')
     if cfg.train_type=='resnet50':
         model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
@@ -106,11 +107,16 @@ if __name__ == "__main__":
         # model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
-        # lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        # lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = lora_model.to(device)
+    elif cfg.train_type=='adapter':
+        adapter_model = Adapter_ViT(model, num_classes=cfg.num_classes)
+        num_params = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
+        net=adapter_model.to(device)
     elif cfg.train_type == "full":
         model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -144,6 +150,6 @@ if __name__ == "__main__":
             if result.best_epoch == result.epoch:
                 torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
-                logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc}, EPOCH: {(result.best_epoch):3}")
+                logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc:.4f}, EPOCH: {(result.best_epoch):3}")
                 logging.info(result.test_mls_auc)
 
