@@ -15,7 +15,7 @@ from tqdm import tqdm
 import timm
 from base_vit import ViT
 from lora import LoRA_ViT,LoRA_ViT_timm
-from utils.dataloader import kneeDataloader
+from utils.dataloader_oai import kneeDataloader
 from utils.dataloader_nih import nihDataloader
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
