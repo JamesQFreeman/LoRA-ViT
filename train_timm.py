@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 import timm
 from lora import LoRA_ViT_timm
+from adapter import Adapter_ViT
 from utils.dataloader_oai import kneeDataloader
 from utils.dataloader_cxr_cn import cxrDataloader
 from utils.dataloader_blood_cell import BloodDataloader
@@ -22,22 +23,16 @@ from utils.dataloader_nih import nihDataloader
 from utils.result import ResultCLS
 from utils.utils import init, save
 
-hiddenSize={
-            "small":768,
-            "base":768,
-            "large":1024,
-            "huge":1280
-            }
 weightInfo={
             # "small":"WinKawaks/vit-small-patch16-224",
-            # "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
+            "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
             "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
             "base_sam":"vit_base_patch16_224.sam", # 1k
             "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
             "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
             "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
             "base_deit":"deit_base_distilled_patch16_224", # 1k
-            # "large":"google/vit-large-patch16-224",
+            "large":"google/vit-large-patch16-224",
             "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
             "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
             "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
@@ -95,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
-    parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
+    parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora, full, linear, adapter")
     parser.add_argument("-rank", "-r", type=int, default=4)
     parser.add_argument("-vit", type=str, default="base")
     cfg = parser.parse_args()
@@ -110,23 +105,45 @@ if __name__ == "__main__":
         # model.load_state_dict()
     else:
         if cfg.vit == "base":
-            model = timm.create_model("vit_base_patch16_224", pretrained=False, checkpoint_path="../preTrain/B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.01-res_224.npz")
-        elif cfg.vit == "small":
-            model = timm.create_model("vit_small_patch16_224", pretrained=False, checkpoint_path="../preTrain/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz")
-        elif cfg.vit == "large":
-            model = timm.create_model("vit_large_patch16_224", pretrained=False, checkpoint_path="../preTrain/L_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.1-sd_0.1--imagenet2012-steps_20k-lr_0.01-res_224.npz")
-        elif cfg.vit in weightInfo:
-            model = timm.create_model(weightInfo[cfg.vit], pretrained=True)
+            model = timm.create_model("vit_base_patch16_224", pretrained=True)
+        elif cfg.vit == "base_dino":
+            model = timm.create_model(weightInfo["base_dino"], pretrained=True)
+        elif cfg.vit == "base_sam":
+            model = timm.create_model(weightInfo["base_sam"], pretrained=True)
+        elif cfg.vit == "base_mill":
+            model = timm.create_model(weightInfo["base_mill"], pretrained=True)
+        elif cfg.vit == "base_beit":
+            model = timm.create_model(weightInfo["base_beit"], pretrained=True)
+        elif cfg.vit == "base_clip":
+            model = timm.create_model(weightInfo["base_clip"], pretrained=True)
+        elif cfg.vit == "base_deit":
+            model = timm.create_model(weightInfo["base_deit"], pretrained=True)
+        elif cfg.vit == "large_clip":
+            model = timm.create_model(weightInfo["large_clip"], pretrained=True)
+        elif cfg.vit == "large_beit":
+            model = timm.create_model(weightInfo["large_beit"], pretrained=True)
+        elif cfg.vit == "huge_clip":
+            model = timm.create_model(weightInfo["huge_clip"], pretrained=True)
+        elif cfg.vit == "giant_eva":
+            model = timm.create_model(weightInfo["giant_eva"], pretrained=True)
+        elif cfg.vit == "giant_clip":
+            model = timm.create_model(weightInfo["giant_clip"], pretrained=True)
+        elif cfg.vit == "giga_clip":
+            model = timm.create_model(weightInfo["giga_clip"], pretrained=True)
         else:
             print("Wrong training type")
             exit()
 
-    hidden_dim=hiddenSize[cfg.vit.split('_')[0]]
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT_timm(model, r=cfg.rank, dim=hidden_dim, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = lora_model.to(device)
+    elif cfg.train_type == "adapter":
+        adapter_model = Adapter_ViT(model, num_classes=cfg.num_classes)
+        num_params = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)
+        print(f"trainable parameters: {num_params/2**20:.3f}M")
+        net = adapter_model.to(device)
     elif cfg.train_type == "full":
         model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
