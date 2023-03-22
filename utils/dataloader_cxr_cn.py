@@ -20,8 +20,10 @@ class GraphDataset(Dataset):
                 cases = cases + [f"{data_path}/CXR_png/{case}"]
                 labels.append(int(case.split("_")[-1].split(".")[0]))
 
-        train_cases, test_cases, train_labels, test_labels = train_test_split(cases, labels, test_size=0.1, shuffle=True, random_state=42)
-        train_cases, val_cases, train_labels, val_labels = train_test_split(train_cases, train_labels, test_size=0.2, shuffle=True, random_state=42)
+        train_cases, test_cases, train_labels, test_labels = train_test_split(cases, labels, test_size=0.2, shuffle=True, random_state=42)
+        # train_cases, val_cases, train_labels, val_labels = train_test_split(train_cases, train_labels, test_size=0.2, shuffle=True, random_state=42)
+        val_cases = test_cases
+        val_labels = test_labels
 
         if data_type == "train":
             self.cases = np.array(train_cases)

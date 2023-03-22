@@ -25,14 +25,14 @@ from utils.utils import init, save
 
 weightInfo={
             # "small":"WinKawaks/vit-small-patch16-224",
-            # "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
+            "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
             "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
             "base_sam":"vit_base_patch16_224.sam", # 1k
             "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
             "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
             "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
             "base_deit":"deit_base_distilled_patch16_224", # 1k
-            # "large":"google/vit-large-patch16-224",
+            "large":"google/vit-large-patch16-224",
             "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
             "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
             "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
@@ -105,13 +105,31 @@ if __name__ == "__main__":
         # model.load_state_dict()
     else:
         if cfg.vit == "base":
-            model = timm.create_model("vit_base_patch16_224", pretrained=False, checkpoint_path="../preTrain/B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.01-res_224.npz")
-        elif cfg.vit == "small":
-            model = timm.create_model("vit_small_patch16_224", pretrained=False, checkpoint_path="../preTrain/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.03-res_224.npz")
-        elif cfg.vit == "large":
-            model = timm.create_model("vit_large_patch16_224", pretrained=False, checkpoint_path="../preTrain/L_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.1-sd_0.1--imagenet2012-steps_20k-lr_0.01-res_224.npz")
-        elif cfg.vit in weightInfo:
-            model = timm.create_model(weightInfo[cfg.vit], pretrained=True)
+            model = timm.create_model("vit_base_patch16_224", pretrained=True)
+        elif cfg.vit == "base_dino":
+            model = timm.create_model(weightInfo["base_dino"], pretrained=True)
+        elif cfg.vit == "base_sam":
+            model = timm.create_model(weightInfo["base_sam"], pretrained=True)
+        elif cfg.vit == "base_mill":
+            model = timm.create_model(weightInfo["base_mill"], pretrained=True)
+        elif cfg.vit == "base_beit":
+            model = timm.create_model(weightInfo["base_beit"], pretrained=True)
+        elif cfg.vit == "base_clip":
+            model = timm.create_model(weightInfo["base_clip"], pretrained=True)
+        elif cfg.vit == "base_deit":
+            model = timm.create_model(weightInfo["base_deit"], pretrained=True)
+        elif cfg.vit == "large_clip":
+            model = timm.create_model(weightInfo["large_clip"], pretrained=True)
+        elif cfg.vit == "large_beit":
+            model = timm.create_model(weightInfo["large_beit"], pretrained=True)
+        elif cfg.vit == "huge_clip":
+            model = timm.create_model(weightInfo["huge_clip"], pretrained=True)
+        elif cfg.vit == "giant_eva":
+            model = timm.create_model(weightInfo["giant_eva"], pretrained=True)
+        elif cfg.vit == "giant_clip":
+            model = timm.create_model(weightInfo["giant_clip"], pretrained=True)
+        elif cfg.vit == "giga_clip":
+            model = timm.create_model(weightInfo["giga_clip"], pretrained=True)
         else:
             print("Wrong training type")
             exit()
