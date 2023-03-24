@@ -18,6 +18,7 @@ from base_vit import ViT
 from lora import LoRA_ViT,LoRA_ViT_timm
 from utils.dataloader_oai import kneeDataloader
 from utils.dataloader_nih import nihDataloader,disease
+from utils.dataloader_cxp import cxpDataloader,cxpFinding
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
@@ -79,13 +80,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-bs", type=int, default=128)
     parser.add_argument("-fold", type=int, default=0)
-    parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
+    parser.add_argument("-data_path",type=str, default='/public_bme/data/')
+    # parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
     parser.add_argument("-data_info",type=str,default='nih_split_712.json')
     parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
     parser.add_argument("-lr", type=float, default=1e-3)
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
-    parser.add_argument("-num_classes", "-nc", type=int, default=14)
+    parser.add_argument("-num_classes", "-nc", type=int, default=12)
     parser.add_argument("-backbone", type=str, default='base(384)')
     parser.add_argument("-train_type", "-tt", type=str, default="adapter", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
@@ -103,9 +105,9 @@ if __name__ == "__main__":
         logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = model.to(device)
     else:
-        model = timm.create_model(weightInfo[cfg.backbone], pretrained=True)
-        # model = ViT('B_16_imagenet1k')
-        # model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
+        # model = timm.create_model(weightInfo[cfg.backbone], pretrained=True)
+        model = ViT('B_16_imagenet1k')
+        model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
         # lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
@@ -138,7 +140,8 @@ if __name__ == "__main__":
     net = torch.nn.DataParallel(net) 
     # trainset, testset = kneeDataloader(cfg)
     # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
-    trainset,valset, testset=nihDataloader(cfg)
+    # trainset,valset, testset=nihDataloader(cfg)
+    trainset,valset, testset=cxpDataloader(cfg)
     loss_func = nn.BCEWithLogitsLoss().to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, cfg.epochs, 1e-6)
@@ -155,7 +158,7 @@ if __name__ == "__main__":
                 message="|"
                 title="|"
                 for idx,i in enumerate(result.test_mls_auc):
-                    title+=f"{list(disease)[idx]:^20}|"
+                    title+=f"{list(cxpFinding)[idx]:^20}|"
                     message+=f"{i:^20.4f}|"
                 logging.info(title)
                 logging.info(message)
