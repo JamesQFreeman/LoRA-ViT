@@ -1,5 +1,6 @@
+from functools import partial
 import numpy as np
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 import os
 from tqdm import tqdm
@@ -28,7 +29,7 @@ class cxpDataset(Dataset):
         self._labels = []
         self._mode = mode
         self.Trans=T.Compose([
-            T.Resize(size=384),
+            T.Resize(size=(384,384)),
             T.RandomHorizontalFlip(p=0.5),
             T.ToTensor(),
             T.Normalize(
@@ -36,7 +37,7 @@ class cxpDataset(Dataset):
                     std=[0.229, 0.224, 0.225]),
         ])
         self.testTrans=T.Compose([
-            T.Resize(size=384),
+            T.Resize(size=(384,384)),
             T.ToTensor(),
             T.Normalize(
                     mean=[0.485, 0.456, 0.406],
@@ -66,17 +67,12 @@ class cxpDataset(Dataset):
         return self._num_image
 
     def __getitem__(self, idx):
-
-        img = Image.open(self._image_paths[idx])
+        img = Image.open(self._image_paths[idx]).convert('RGB')
         if self.mode =='train':
             img=self.Trans(img)
         else:
             img=self.testTrans(img)
         gt=self._labels[idx]
-        # gt=np.zeros([len(disease)],dtype=np.int64)
-        # if findings[0]!="No Finding":
-        #     gt[list(map(lambda x: disease[x], findings))]=1
-        
         gt=torch.tensor(gt,dtype=torch.float32)
 
         return img,gt
