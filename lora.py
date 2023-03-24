@@ -258,8 +258,9 @@ class LoRA_ViT_timm(nn.Module):
         self.reset_parameters()
         self.lora_vit = vit_model
         if num_classes > 0:
-            self.lora_vit.head = nn.Linear(
-                self.dim, num_classes)
+            self.lora_vit.reset_classifier(num_classes=num_classes)
+            # self.lora_vit.head = nn.Linear(
+            #     self.dim, num_classes)
 
     def save_fc_parameters(self,
                            filename: str) -> None:
