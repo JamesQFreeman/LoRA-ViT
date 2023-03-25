@@ -7,7 +7,7 @@ from tqdm import tqdm
 from PIL import Image
 import torch
 cxpFinding={
-        "Enlarged Cardiomediastinum":0,
+        "Enlarged":0,
         "Cardiomegaly":1,
         "Lung Opacity":2,
         "Lung Lesion":3,

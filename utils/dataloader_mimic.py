@@ -47,7 +47,8 @@ class mimicDataset(Dataset):
         ])
 
         self.findings={
-            "Enlarged Cardiomediastinum":0,
+            # "Enlarged Cardiomediastinum":0,
+            "Enlarged":0,
             "Cardiomegaly":1,
             "Lung Opacity":2,
             "Lung Lesion":3,
