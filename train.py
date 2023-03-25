@@ -19,6 +19,7 @@ from lora import LoRA_ViT,LoRA_ViT_timm
 from utils.dataloader_oai import kneeDataloader
 from utils.dataloader_nih import nihDataloader,disease
 from utils.dataloader_cxp import cxpDataloader,cxpFinding
+from utils.dataloader_mimic import mimicDataloader
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
@@ -142,6 +143,7 @@ if __name__ == "__main__":
     # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     # trainset,valset, testset=nihDataloader(cfg)
     trainset,valset, testset=cxpDataloader(cfg)
+    valset,testset=mimicDataloader(cfg)
     loss_func = nn.BCEWithLogitsLoss().to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, cfg.epochs, 1e-6)
