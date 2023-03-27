@@ -7,8 +7,9 @@ import numpy as np
 import torch
 # import yaml
 from imblearn.metrics import sensitivity_score, specificity_score
-from sklearn.metrics import (accuracy_score, f1_score,confusion_matrix,
-                             precision_score, roc_auc_score,recall_score,multilabel_confusion_matrix)
+from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
+                             multilabel_confusion_matrix, precision_score,
+                             recall_score, roc_auc_score)
 
 
 def mkdirs(path: str):
@@ -84,7 +85,7 @@ class ResultCLS:
         # logging.info(f"ACC: {self.pars[1]:.3f}, TIME: {self.time:.1f}s")
         logging.info(f"ACC: {self.pars[0]:.3f}, TIME: {self.time:.1f}s")
         logging.info((forma_1 + forma_2).format(*titles, *items))
-        # logging.debug(f"\n{self.cm}")
+        logging.debug(f"\n{self.cm}")
         self.epoch = epoch
 
         if datatype == 'test':
