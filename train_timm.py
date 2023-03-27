@@ -145,17 +145,17 @@ if __name__ == "__main__":
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = adapter_model.to(device)
     elif cfg.train_type == "full":
-        model.fc = nn.Linear(768, cfg.num_classes)
+        model.reset_classifier(cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     elif cfg.train_type == "linear":
-        model.fc = nn.Linear(768, cfg.num_classes)
+        model.reset_classifier(cfg.num_classes)
         for param in model.parameters():
             param.requires_grad = False
-        for param in model.fc.parameters():
+        for param in model.head.parameters():
             param.requires_grad = True
-        num_params = sum(p.numel() for p in model.fc.parameters())
+        num_params = sum(p.numel() for p in model.head.parameters())
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     elif cfg.train_type=='resnet50':
