@@ -186,7 +186,10 @@ if __name__ == "__main__":
         if epoch%1==0:
             eval(epoch,valset,datatype='val')
             if result.best_epoch == result.epoch:
-                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
+                if cfg.train_type == "lora":
+                    net.module.save_lora_parameters(ckpt_path.replace(".pt", ".safetensors"))
+                else:
+                    torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
                 logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc:.3f}, EPOCH: {(result.best_epoch):3}")
                 # logging.info(result.test_mls_auc)
