@@ -125,7 +125,12 @@ class LoRA_ViT(nn.Module):
         num_layer = len(self.w_As)  # actually, it is half
         a_tensors = {f"w_a_{i:03d}": self.w_As[i].weight for i in range(num_layer)}
         b_tensors = {f"w_b_{i:03d}": self.w_Bs[i].weight for i in range(num_layer)}
-        merged_dict = {**a_tensors, **b_tensors}
+        
+        _in = self.lora_vit.head.in_features
+        _out = self.lora_vit.head.out_features
+        fc_tensors = {f"fc_{_in}in_{_out}out": self.lora_vit.head.weight}
+        
+        merged_dict = {**a_tensors, **b_tensors, **fc_tensors}
         save_file(merged_dict, filename)
 
     def load_lora_parameters(self, filename: str) -> None:
@@ -146,6 +151,15 @@ class LoRA_ViT(nn.Module):
                 saved_key = f"w_b_{i:03d}"
                 saved_tensor = f.get_tensor(saved_key)
                 w_B_linear.weight = Parameter(saved_tensor)
+                
+            _in = self.lora_vit.head.in_features
+            _out = self.lora_vit.head.out_features
+            saved_key = f"fc_{_in}in_{_out}out"
+            try:
+                saved_tensor = f.get_tensor(saved_key)
+                self.lora_vit.head.weight = Parameter(saved_tensor)
+            except ValueError:
+                print("this fc weight is not for this model")
 
     def reset_parameters(self) -> None:
         for w_A in self.w_As:
