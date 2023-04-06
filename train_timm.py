@@ -145,17 +145,17 @@ if __name__ == "__main__":
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = adapter_model.to(device)
     elif cfg.train_type == "full":
-        model.fc = nn.Linear(768, cfg.num_classes)
+        model.reset_classifier(cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     elif cfg.train_type == "linear":
-        model.fc = nn.Linear(768, cfg.num_classes)
+        model.reset_classifier(cfg.num_classes)
         for param in model.parameters():
             param.requires_grad = False
-        for param in model.fc.parameters():
+        for param in model.head.parameters():
             param.requires_grad = True
-        num_params = sum(p.numel() for p in model.fc.parameters())
+        num_params = sum(p.numel() for p in model.head.parameters())
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = model.to(device)
     elif cfg.train_type=='resnet50':
@@ -186,7 +186,10 @@ if __name__ == "__main__":
         if epoch%1==0:
             eval(epoch,valset,datatype='val')
             if result.best_epoch == result.epoch:
-                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
+                if cfg.train_type == "lora":
+                    net.module.save_lora_parameters(ckpt_path.replace(".pt", ".safetensors"))
+                else:
+                    torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
                 logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc:.3f}, EPOCH: {(result.best_epoch):3}")
                 # logging.info(result.test_mls_auc)
