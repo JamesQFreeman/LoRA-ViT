@@ -42,6 +42,24 @@ weightInfo={
             "giga_clip":"vit_gigantic_patch14_clip_224.laion2b"
             }
 
+def extractBackbone(state_dict,prefix: str)->callable:
+    if prefix==None:
+        for k in list(state_dict.keys()):
+            if k.startswith('fc'):
+                del state_dict[k]
+        return state_dict
+
+    for k in list(state_dict.keys()):
+        if k.startswith(f'{prefix}.'):
+            # print(k)
+            if k.startswith('') and not k.startswith(f'{prefix}.fc'):
+                # remove prefix
+                state_dict[k[len(f"{prefix}."):]] = state_dict[k]
+        # del掉不是backbone的部分
+        del state_dict[k]
+    return state_dict
+
+
 def train(epoch,trainset):
     running_loss = 0.0
     this_lr = scheduler.get_last_lr()[0]
@@ -113,6 +131,9 @@ if __name__ == "__main__":
     if cfg.train_type == "lora":
         # lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
         lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        weight=torch.load('./results/cxp_2.pt')
+        extractBackbone(weight,'module')
+        lora_model.load_state_dict(weight)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = lora_model.to(device)
@@ -154,7 +175,15 @@ if __name__ == "__main__":
         if epoch%1==0:
             eval(epoch,valset,datatype='val')
             if result.best_epoch == result.epoch:
-                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
+                
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'best_val':result.best_val_result
+                    }, ckpt_path)
+
+                # torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
                 logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc:.4f}, EPOCH: {(result.best_epoch):3}")
                 message="|"
