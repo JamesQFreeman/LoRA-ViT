@@ -20,7 +20,7 @@ class Adapter_ViT(nn.Module):
         num_classes: how many classes the model output, default to the vit model
 
     Examples::
-        >>> model = ViT('B_16_imagenet1k')
+        >>> model = timm.create_model("vit_base_patch16_224.orig_in21k_ft_in1k", pretrained=True)
         >>> adapter_model = Adapter_ViT(model, r=4)
         >>> preds = adapter_model(img)
         >>> print(preds.shape)
@@ -50,34 +50,9 @@ class Adapter_ViT(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         return self.backbone(x)
     
+
+
+if __name__=="__main__":
+    model = timm.create_model("vit_base_patch16_224.orig_in21k_ft_in1k", pretrained=True)
+    adapter_model = Adapter_ViT(model,num_classes=14)
     
-# import timm
-# from transformers import AutoFeatureExtractor, AutoModelForImageClassification
-# from lora import LoRA_ViT_timm
-# hiddenSize={
-#             "small":768,
-#             "base":768,
-#             "large":1024,
-#             "huge":1280
-#             }
-# weightInfo={
-#             # "small":"WinKawaks/vit-small-patch16-224",
-#             "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
-#             "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
-#             "base_sam":"vit_base_patch16_224.sam", # 1k
-#             "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
-#             "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
-#             "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
-#             "base_deit":"deit_base_distilled_patch16_224", # 1k
-#             # "large":"google/vit-large-patch16-224",
-#             "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
-#             "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
-#             "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
-#             # "giant_eva":"eva_giant_patch14_224.clip_ft_in1k", # laion-> 1k
-#             # "giant_clip":"vit_giant_patch14_clip_224.laion2b",
-#             # "giga_clip":"vit_gigantic_patch14_clip_224.laion2b"
-#             }
-# for i in list(weightInfo):
-#     print(f"========={i}=========")
-#     model = timm.create_model(weightInfo[i], pretrained=True)
-#     lora_model = LoRA_ViT_timm(model, r=4, dim=hiddenSize[i.split('_')[0]], num_classes=14)
