@@ -156,7 +156,7 @@ class ResultMLS:
         items = [datatype.upper()] + self.pars
         forma_1 = "\n|{:^8}" + "|{:^5}" * (len(titles) - 1) + "|"
         forma_2 = "\n|{:^8}" + "|{:^.3f}" * (len(titles) - 1) + "|"
-        logging.info(f"AUC: {self.pars[-1]:.3f}, TIME: {self.time:.1f}s")
+        # logging.info(f"AUC: {self.pars[-1]:.3f}, TIME: {self.time:.1f}s")
         logging.info((forma_1 + forma_2).format(*titles, *items))
         logging.debug(f"\n{self.cm}")
         self.epoch = epoch

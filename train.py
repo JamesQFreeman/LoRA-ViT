@@ -13,19 +13,27 @@ from torch.cuda.amp.grad_scaler import GradScaler
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 import timm
+from adapter import Adapter_ViT 
 from base_vit import ViT
 from lora import LoRA_ViT,LoRA_ViT_timm
 from utils.dataloader_oai import kneeDataloader
-from utils.dataloader_nih import nihDataloader
+from utils.dataloader_nih import nihDataloader,disease
+from utils.dataloader_cxp import cxpDataloader,cxpFinding
+from utils.dataloader_mimic import mimicDataloader
 from utils.result import ResultCLS, ResultMLS
 from utils.utils import init, save
 
-weightInfo={"base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
+weightInfo={
+            # "small":"WinKawaks/vit-small-patch16-224",
+            "base(384)":"hf_hub:timm/vit_base_patch16_384.orig_in21k_ft_in1k",
+            "base":"vit_base_patch16_224.orig_in21k_ft_in1k",
+            "base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
             "base_sam":"vit_base_patch16_224.sam", # 1k
             "base_mill":"vit_base_patch16_224_miil.in21k_ft_in1k", # 1k
             "base_beit":"beitv2_base_patch16_224.in1k_ft_in22k_in1k",
             "base_clip":"vit_base_patch16_clip_224.laion2b_ft_in1k", # 1k
             "base_deit":"deit_base_distilled_patch16_224", # 1k
+            # "large":"google/vit-large-patch16-224",
             "large_clip":"vit_large_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
             "large_beit":"beitv2_large_patch16_224.in1k_ft_in22k_in1k", 
             "huge_clip":"vit_huge_patch14_clip_224.laion2b_ft_in1k", # laion-> 1k
@@ -33,6 +41,24 @@ weightInfo={"base_dino":"vit_base_patch16_224.dino", # 21k -> 1k
             "giant_clip":"vit_giant_patch14_clip_224.laion2b",
             "giga_clip":"vit_gigantic_patch14_clip_224.laion2b"
             }
+
+def extractBackbone(state_dict,prefix: str)->callable:
+    if prefix==None:
+        for k in list(state_dict.keys()):
+            if k.startswith('fc'):
+                del state_dict[k]
+        return state_dict
+
+    for k in list(state_dict.keys()):
+        if k.startswith(f'{prefix}.'):
+            # print(k)
+            if k.startswith('') and not k.startswith(f'{prefix}.fc'):
+                # remove prefix
+                state_dict[k[len(f"{prefix}."):]] = state_dict[k]
+        # del掉不是backbone的部分
+        del state_dict[k]
+    return state_dict
+
 
 def train(epoch,trainset):
     running_loss = 0.0
@@ -71,16 +97,17 @@ def eval(epoch,testset,datatype='val'):
 if __name__ == "__main__":
     scaler = GradScaler()
     parser = argparse.ArgumentParser()
-    parser.add_argument("-bs", type=int, default=16)
+    parser.add_argument("-bs", type=int, default=128)
     parser.add_argument("-fold", type=int, default=0)
-    parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
+    parser.add_argument("-data_path",type=str, default='/public_bme/data/')
+    # parser.add_argument("-data_path",type=str, default='../data/NIH_X-ray/')
     parser.add_argument("-data_info",type=str,default='nih_split_712.json')
     parser.add_argument("-annotation",type=str,default='Data_Entry_2017_jpg.csv')
     parser.add_argument("-lr", type=float, default=1e-3)
     parser.add_argument("-epochs", type=int, default=20)
     parser.add_argument("-num_workers", type=int, default=4)
-    parser.add_argument("-num_classes", "-nc", type=int, default=14)
-    parser.add_argument("-backbone", type=str, default='base_dino')
+    parser.add_argument("-num_classes", "-nc", type=int, default=12)
+    parser.add_argument("-backbone", type=str, default='base(384)')
     parser.add_argument("-train_type", "-tt", type=str, default="lora", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
     cfg = parser.parse_args()
@@ -88,10 +115,6 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(cfg)
 
-    #   a.根据local_rank来设定当前使用哪块GPU
-    # torch.cuda.set_device(local_rank)
-    #   b.初始化DDP，使用默认backend(nccl)就行。如果是CPU模型运行，需要选择其他后端。
-    # dist.init_process_group(backend='nccl')
     if cfg.train_type=='resnet50':
         model=models.__dict__[cfg.train_type]()
         model.load_state_dict(torch.load('../preTrain/resnet50-19c8e357.pth'))
@@ -101,16 +124,24 @@ if __name__ == "__main__":
         logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = model.to(device)
     else:
-        model = timm.create_model(weightInfo[cfg.backbone], pretrained=True)
-        # model = ViT('B_16_imagenet1k')
-        # model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
+        # model = timm.create_model(weightInfo[cfg.backbone], pretrained=True)
+        model = ViT('B_16_imagenet1k')
+        model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
-        # lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        # lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        weight=torch.load('./results/cxp_2.pt')
+        extractBackbone(weight,'module')
+        lora_model.load_state_dict(weight)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
         net = lora_model.to(device)
+    elif cfg.train_type=='adapter':
+        adapter_model = Adapter_ViT(model, num_classes=cfg.num_classes)
+        num_params = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)
+        logging.info(f"trainable parameters: {num_params/2**20:.4f}M")
+        net=adapter_model.to(device)
     elif cfg.train_type == "full":
         model.fc = nn.Linear(768, cfg.num_classes)
         num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -131,7 +162,9 @@ if __name__ == "__main__":
     net = torch.nn.DataParallel(net) 
     # trainset, testset = kneeDataloader(cfg)
     # loss_func = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
-    trainset,valset, testset=nihDataloader(cfg)
+    # trainset,valset, testset=nihDataloader(cfg)
+    trainset,valset, testset=cxpDataloader(cfg)
+    valset,testset=mimicDataloader(cfg)
     loss_func = nn.BCEWithLogitsLoss().to(device)
     optimizer = optim.Adam(net.parameters(), lr=cfg.lr)
     scheduler = CosineAnnealingLR(optimizer, cfg.epochs, 1e-6)
@@ -142,8 +175,22 @@ if __name__ == "__main__":
         if epoch%1==0:
             eval(epoch,valset,datatype='val')
             if result.best_epoch == result.epoch:
-                torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
+                
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': net.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'best_val':result.best_val_result
+                    }, ckpt_path)
+
+                # torch.save(net.state_dict(), ckpt_path.replace(".pt", "_best.pt"))
                 eval(epoch,testset,datatype='test')
-                logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc}, EPOCH: {(result.best_epoch):3}")
-                logging.info(result.test_mls_auc)
+                logging.info(f"BEST VAL: {result.best_val_result:.3f}, TEST: {result.test_auc:.4f}, EPOCH: {(result.best_epoch):3}")
+                message="|"
+                title="|"
+                for idx,i in enumerate(result.test_mls_auc):
+                    title+=f"{list(cxpFinding)[idx]:^20}|"
+                    message+=f"{i:^20.4f}|"
+                logging.info(title)
+                logging.info(message)
 
