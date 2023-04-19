@@ -93,6 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora, full, linear, adapter")
     parser.add_argument("-rank", "-r", type=int, default=4)
     parser.add_argument("-vit", type=str, default="base")
+    parser.add_argument("-data_size", type=float, default="1.0")
     cfg = parser.parse_args()
     ckpt_path = init()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

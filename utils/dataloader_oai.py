@@ -9,10 +9,11 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import Resize
 from torchvision.transforms import Normalize
 from torchvision.transforms import RandomHorizontalFlip
+import random
 
 
 class GraphDataset(Dataset):
-    def __init__(self, data_type="train", fold_idx=0, data_path="OAI-train"):
+    def __init__(self, data_type="train", fold_idx=0, data_path="OAI-train", data_size=1.0):
         cases = []
         labels = []
         for grade in range(5):
@@ -26,8 +27,12 @@ class GraphDataset(Dataset):
         test_cases, val_cases, test_labels, val_labels = train_test_split(test_cases, test_labels, test_size=0.5, shuffle=True, random_state=42)
 
         if data_type == "train":
-            self.cases = np.array(train_cases)
-            self.labels = np.array(train_labels)
+            assert ((data_size > 0) and (data_size <= 1.0))
+            temp = list(zip(train_cases, train_labels))
+            random.shuffle(temp)
+            train_cases[:], train_labels[:] = zip(*temp)
+            self.cases = np.array(train_cases[:int(len(train_cases) * data_size)])
+            self.labels = np.array(train_labels[:int(len(train_cases) * data_size)])
         elif data_type == "test":
             self.cases = np.array(test_cases)
             self.labels = np.array(test_labels)
@@ -78,7 +83,7 @@ def _kneeDataloader(bs):
 
 def kneeDataloader(cfg):
     train_set = DataLoader(
-        GraphDataset(data_type="train", fold_idx=cfg.fold, data_path=cfg.data_path),
+        GraphDataset(data_type="train", fold_idx=cfg.fold, data_path=cfg.data_path, data_size=cfg.data_size),
         batch_size=cfg.bs,
         shuffle=True,
         num_workers=cfg.num_workers,
