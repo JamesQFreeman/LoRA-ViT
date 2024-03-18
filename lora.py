@@ -465,7 +465,7 @@ class LoRA_ViT_timm_x(nn.Module):
                     w_b_linear_vs.append(w_b_linear_v)
                     
                     _in = self.lora_vit.head.in_features
-                    _out = int(melo_info[4])
+                    _out = int(melo_info[5])
                     self.num_classes.append(_out)
                     self.fc_loras.append(f.get_tensor(f"fc_{_in}in_{_out}out"))
             
