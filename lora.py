@@ -17,14 +17,16 @@ from base_vit import ViT
 
 
 class _LoRALayer(nn.Module):
-    def __init__(self, w: nn.Module, w_a: nn.Module, w_b: nn.Module):
+    def __init__(self, w: nn.Module, w_a: nn.Module, w_b: nn.Module, r: int, alpha: int):
         super().__init__()
         self.w = w
         self.w_a = w_a
         self.w_b = w_b
+        self.r = r
+        self.alpha = alpha
 
     def forward(self, x):
-        x = self.w(x) + self.w_b(self.w_a(x))
+        x = self.w(x) + (self.alpha // self.r) * self.w_b(self.w_a(x))
         return x
 
 
@@ -45,10 +47,11 @@ class LoRA_ViT(nn.Module):
         torch.Size([1, 1000])
     """
 
-    def __init__(self, vit_model: ViT, r: int, num_classes: int = 0, lora_layer=None):
+    def __init__(self, vit_model: ViT, r: int, alpha: int, num_classes: int = 0, lora_layer=None):
         super(LoRA_ViT, self).__init__()
 
         assert r > 0
+        assert alpha > 0
         base_vit_dim = vit_model.transformer.blocks[0].attn.proj_q.in_features
         dim = base_vit_dim
         if lora_layer:
@@ -78,8 +81,8 @@ class LoRA_ViT(nn.Module):
             self.w_Bs.append(w_b_linear_q)
             self.w_As.append(w_a_linear_v)
             self.w_Bs.append(w_b_linear_v)
-            blk.attn.proj_q = _LoRALayer(w_q_linear, w_a_linear_q, w_b_linear_q)
-            blk.attn.proj_v = _LoRALayer(w_v_linear, w_a_linear_v, w_b_linear_v)
+            blk.attn.proj_q = _LoRALayer(w_q_linear, w_a_linear_q, w_b_linear_q, r, alpha)
+            blk.attn.proj_v = _LoRALayer(w_v_linear, w_a_linear_v, w_b_linear_v, r, alpha)
 
         self.reset_parameters()
         self.lora_vit = vit_model
@@ -188,6 +191,8 @@ class _LoRA_qkv_timm(nn.Module):
         linear_b_q: nn.Module,
         linear_a_v: nn.Module,
         linear_b_v: nn.Module,
+        r: int,
+        alpha: int
     ):
         super().__init__()
         self.qkv = qkv
@@ -197,21 +202,24 @@ class _LoRA_qkv_timm(nn.Module):
         self.linear_b_v = linear_b_v
         self.dim = qkv.in_features
         self.w_identity = torch.eye(qkv.in_features)
+        self.r = r
+        self.alpha = alpha
 
     def forward(self, x):
         qkv = self.qkv(x)  # B,N,3*org_C
         new_q = self.linear_b_q(self.linear_a_q(x))
         new_v = self.linear_b_v(self.linear_a_v(x))
-        qkv[:, :, : self.dim] += new_q
-        qkv[:, :, -self.dim :] += new_v
+        qkv[:, :, : self.dim] += (self.alpha // self.r) * new_q
+        qkv[:, :, -self.dim :] += (self.alpha // self.r) * new_v
         return qkv
 
 
 class LoRA_ViT_timm(nn.Module):
-    def __init__(self, vit_model: timm_ViT, r: int, num_classes: int = 0, lora_layer=None):
+    def __init__(self, vit_model: timm_ViT, r: int, alpha: int, num_classes: int = 0, lora_layer=None):
         super(LoRA_ViT_timm, self).__init__()
 
         assert r > 0
+        assert alpha > 0
         if lora_layer:
             self.lora_layer = lora_layer
         else:
@@ -247,6 +255,8 @@ class LoRA_ViT_timm(nn.Module):
                 w_b_linear_q,
                 w_a_linear_v,
                 w_b_linear_v,
+                r,
+                alpha
             )
         self.reset_parameters()
         self.lora_vit = vit_model
@@ -369,6 +379,7 @@ class _LoRA_qkv_timm_x(nn.Module):
         linear_b_qs,
         linear_a_vs,
         linear_b_vs,
+        scale_list,
     ):
         super().__init__()
         self.qkv = qkv
@@ -380,6 +391,7 @@ class _LoRA_qkv_timm_x(nn.Module):
         self.dim = qkv.in_features
         self.w_identity = torch.eye(qkv.in_features)
         self.lora_id = 0
+        self.scale_list = scale_list
     
     def change_lora(self, num):
         self.lora_id = num
@@ -392,8 +404,8 @@ class _LoRA_qkv_timm_x(nn.Module):
         linear_b_v = getattr(self, f'linear_b_v_{self.lora_id}')
         new_q = linear_b_q(linear_a_q(x))
         new_v = linear_b_v(linear_a_v(x))
-        qkv[:, :, : self.dim] += new_q
-        qkv[:, :, -self.dim :] += new_v
+        qkv[:, :, : self.dim] += self.scale_list[self.lora_id] * new_q
+        qkv[:, :, -self.dim :] += self.scale_list[self.lora_id] * new_v
         return qkv
         
 class LoRA_ViT_timm_x(nn.Module):
@@ -428,11 +440,14 @@ class LoRA_ViT_timm_x(nn.Module):
             w_b_linear_qs = []
             w_a_linear_vs = []
             w_b_linear_vs = []
+            scale_list = []
             for file_path in lora_files:
                 with safe_open(file_path, framework="pt") as f:
                     melo_info = file_path.split("/")[-1].split("_")
                     
                     r = int(melo_info[3])
+                    alpha = int(melo_info[4])
+                    scale_list.append(alpha // r)
                     
                     w_a_linear_q = nn.Linear(self.dim, r, bias=False)
                     w_b_linear_q = nn.Linear(r, self.dim, bias=False)
@@ -460,6 +475,7 @@ class LoRA_ViT_timm_x(nn.Module):
                 w_b_linear_qs,
                 w_a_linear_vs,
                 w_b_linear_vs,
+                scale_list
             )
         # self.reset_parameters()
         # self.proj_3d = nn.Linear(num_classes * 30, num_classes)

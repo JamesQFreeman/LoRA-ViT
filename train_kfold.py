@@ -64,7 +64,7 @@ def parseNet(cfg):
         model.load_state_dict(torch.load('../preTrain/B_16_imagenet1k.pth'))
     
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT(model, r=cfg.rank, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT(model, r=cfg.rank, alpha=cfg.alpha, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         logging.info(f"trainable parameters: {num_params/2**20:.1f}M")
         net = lora_model.to(device)
@@ -108,6 +108,7 @@ if __name__ == "__main__":
     parser.add_argument("-num_classes", "-nc", type=int, default=2)
     parser.add_argument("-train_type", "-tt", type=str, default="full", help="lora: only train lora, full: finetune on all, linear: finetune only on linear layer")
     parser.add_argument("-rank", "-r", type=int, default=4)
+    parser.add_argument("-alpha", "-a", type=int, default=4)
     cfg = parser.parse_args()
     ckpt_path = init()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
