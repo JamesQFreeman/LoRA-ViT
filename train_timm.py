@@ -92,6 +92,7 @@ if __name__ == "__main__":
     parser.add_argument("-num_classes", "-nc", type=int, default=14)
     parser.add_argument("-train_type", "-tt", type=str, default="linear", help="lora, full, linear, adapter")
     parser.add_argument("-rank", "-r", type=int, default=4)
+    parser.add_argument("-alpha", "-a", type=int, default=4)
     parser.add_argument("-vit", type=str, default="base")
     parser.add_argument("-data_size", type=float, default="1.0")
     cfg = parser.parse_args()
@@ -136,7 +137,7 @@ if __name__ == "__main__":
             exit()
 
     if cfg.train_type == "lora":
-        lora_model = LoRA_ViT_timm(model, r=cfg.rank, num_classes=cfg.num_classes)
+        lora_model = LoRA_ViT_timm(model, r=cfg.rank, alpha=cfg.alpha, num_classes=cfg.num_classes)
         num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
         print(f"trainable parameters: {num_params/2**20:.3f}M")
         net = lora_model.to(device)
