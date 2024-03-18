@@ -30,7 +30,7 @@ import torch
 from lora import LoRA_ViT_timm
 img = torch.randn(2, 3, 224, 224)
 model = timm.create_model('vit_base_patch16_224', pretrained=True)
-lora_vit = LoRA_ViT_timm(vit_model=model, r=4, num_classes=10)
+lora_vit = LoRA_ViT_timm(vit_model=model, r=4, alpha=4, num_classes=10)
 pred = lora_vit(img)
 print(pred.shape)
 ```
@@ -50,7 +50,7 @@ num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print(f"trainable parameters: {num_params}") #trainable parameters: 86859496
 
 
-lora_model = LoRA_ViT(model, r=4, num_classes=10)
+lora_model = LoRA_ViT(model, r=4, alpha=4, num_classes=10)
 num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
 print(f"trainable parameters: {num_params}") # trainable parameters: 147456
 
@@ -60,7 +60,7 @@ this an example for segmentation tasks, using deeplabv3
 ```python
 model = ViT('B_16_imagenet1k')
 model.load_state_dict(torch.load('B_16_imagenet1k.pth'))
-lora_model = LoRA_ViT(model, r=4)
+lora_model = LoRA_ViT(model, r=4, alpha=4)
 seg_lora_model = SegWrapForViT(vit_model=lora_model, image_size=384,
                             patches=16, dim=768, n_classes=10)
 
