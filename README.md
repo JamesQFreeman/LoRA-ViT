@@ -1,33 +1,45 @@
-# MeLo: Low-rank Adaptation is Better than Finetuning for Medical Image
+# LoRA-ViT
+
+Low-Rank Adaptation for Vision Transformers. Apply LoRA to any ViT with a single wrapper.
 
 ![Intro](./assets/intro.png)
 
-## Useful links
+> **On Apple Silicon?** Check out [mlx-vit-tune](https://github.com/JamesQFreeman/mlx-vit-tune) — native MLX fine-tuning for ViT with LoRA and full FT, gradient checkpointing, and an Unsloth-like API. 2-5x faster than PyTorch CPU on the same chip.
+
+## Links
 
 <div align="center">
     <a href="https://absterzhu.github.io/melo.github.io/" class="button"><b>[Homepage]</b></a> &nbsp;&nbsp;&nbsp;&nbsp;
     <a href="https://arxiv.org/abs/2311.08236" class="button"><b>[arXiv]</b></a> &nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="https://github.com/JamesQFreeman/mlx-vit-tune" class="button"><b>[MLX Version]</b></a> &nbsp;&nbsp;&nbsp;&nbsp;
 </div>
 
-## Feature
-- [x] Supported DeepLab segmentation for ```lukemelas/PyTorch-Pretrained-ViT```. 2023-03-15
-- [x] Supported ```timm```. 2023-03-16
-- [x] Supported ```multi-lora```. 2023-11-15
-- [ ] Repo clean up.
+## Features
+
+- [x] LoRA for `timm` Vision Transformers
+- [x] LoRA for `lukemelas/PyTorch-Pretrained-ViT`
+- [x] DeepLab segmentation support
+- [x] Multi-LoRA support
+- [x] Save / load adapters via `safetensors`
 
 ## Installation
-Gii clone. My ```torch.__version__==1.13.0```, other version newer than ```torch.__version__==1.10.0``` should also work, I guess.
-You may also need a ```safetensors``` from huggingface to load and save weight.
 
-## Examples
-You may find examples in ```examples.ipynb```
+```bash
+git clone https://github.com/JamesQFreeman/LoRA-ViT.git
+pip install torch timm safetensors
+```
+
+Requires `torch>=1.10.0`.
 
 ## Usage
-You may use Vision Transformer from ```timm```:
+
+### With timm
+
 ```python
 import timm
 import torch
 from lora import LoRA_ViT_timm
+
 img = torch.randn(2, 3, 224, 224)
 model = timm.create_model('vit_base_patch16_224', pretrained=True)
 lora_vit = LoRA_ViT_timm(vit_model=model, r=4, alpha=4, num_classes=10)
@@ -35,8 +47,8 @@ pred = lora_vit(img)
 print(pred.shape)
 ```
 
-If timm is too complicated, you can use a simpler implementation of ViT from ```lukemelas/PyTorch-Pretrained-ViT```.
-Wrap you ViT using LoRA-ViT, this a simple example of classifer
+### With PyTorch-Pretrained-ViT
+
 ```python
 from base_vit import ViT
 import torch
@@ -44,43 +56,33 @@ from lora import LoRA_ViT
 
 model = ViT('B_16_imagenet1k')
 model.load_state_dict(torch.load('B_16_imagenet1k.pth'))
-preds = model(img) # preds.shape = torch.Size([1, 1000])
 
-num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print(f"trainable parameters: {num_params}") #trainable parameters: 86859496
-
-
+# 86M params → only 147K trainable with LoRA
 lora_model = LoRA_ViT(model, r=4, alpha=4, num_classes=10)
 num_params = sum(p.numel() for p in lora_model.parameters() if p.requires_grad)
-print(f"trainable parameters: {num_params}") # trainable parameters: 147456
-
+print(f"trainable parameters: {num_params}")  # 147456
 ```
 
-this an example for segmentation tasks, using deeplabv3
+### Segmentation (DeepLabV3)
+
 ```python
 model = ViT('B_16_imagenet1k')
 model.load_state_dict(torch.load('B_16_imagenet1k.pth'))
 lora_model = LoRA_ViT(model, r=4, alpha=4)
 seg_lora_model = SegWrapForViT(vit_model=lora_model, image_size=384,
-                            patches=16, dim=768, n_classes=10)
-
-num_params = sum(p.numel() for p in seg_lora_model.parameters() if p.requires_grad)
-print(f"Number of trainable parameters: {num_params/2**20:.3f}") # trainable parameters: 6.459
+                               patches=16, dim=768, n_classes=10)
 ```
 
-Save and load LoRA:
+### Save and Load
+
 ```python
-lora_model.save_lora_parameters('mytask.lora.safetensors') # save
-lora_model.load_lora_parameters('mytask.lora.safetensors') # load
+lora_model.save_lora_parameters('mytask.lora.safetensors')
+lora_model.load_lora_parameters('mytask.lora.safetensors')
 ```
-
-## Performance
-In M1 Pro, LoRA is about 1.8x~1.9x faster.
-```python performance_profile.py``` should do the time profiler now. More test will come soon.
 
 ## Citation
-Use this bibtex to cite this repository:
-```
+
+```bibtex
 @misc{zhu2023melo,
       title={MeLo: Low-rank Adaptation is Better than Fine-tuning for Medical Image Diagnosis}, 
       author={Yitao Zhu and Zhenrong Shen and Zihao Zhao and Sheng Wang and Xin Wang and Xiangyu Zhao and Dinggang Shen and Qian Wang},
@@ -92,4 +94,5 @@ Use this bibtex to cite this repository:
 ```
 
 ## Credit
-ViT code and imagenet pretrained weight come from ```lukemelas/PyTorch-Pretrained-ViT```
+
+ViT code and ImageNet pretrained weights from `lukemelas/PyTorch-Pretrained-ViT`.
