@@ -4,7 +4,7 @@ Low-Rank Adaptation for Vision Transformers. Apply LoRA to any ViT with a single
 
 ![Intro](./assets/intro.png)
 
-> **On Apple Silicon?** Check out [mlx-vit-tune](https://github.com/JamesQFreeman/mlx-vit-tune) — native MLX fine-tuning for ViT with LoRA and full FT, gradient checkpointing, and an Unsloth-like API. 2-5x faster than PyTorch CPU on the same chip.
+> **On Mac?** Check out [mlx-vit-tune](https://github.com/JamesQFreeman/mlx-vit-tune) — native MLX fine-tuning for ViT with LoRA and full FT, gradient checkpointing, and an Unsloth-like API. 2-5x faster than PyTorch CPU on the same chip.
 
 ## Links
 
